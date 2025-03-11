@@ -52,7 +52,7 @@ func SteamLogin(c *gin.Context) {
 		return
 	}
 
-	log.Println("✅ Redirecting to Steam:", authURL)
+	log.Println("Redirecting to Steam:", authURL)
 	// Send an HTTP redirect to steam login
 	c.Redirect(http.StatusFound, authURL)
 }
@@ -61,7 +61,7 @@ func SteamLogin(c *gin.Context) {
 func SteamCallback(c *gin.Context) {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("🚨 WARNING: No .env file found, using system environment variables.")
+		log.Println("WARNING: No .env file found, using system environment variables.")
 	}
 
 	// Get openid response from Steam
@@ -73,7 +73,7 @@ func SteamCallback(c *gin.Context) {
 	// Verify Steam openid repsonse
 	openIDURL := os.Getenv("STEAM_OPENID_URL")
 	if openIDURL == "" {
-		log.Println("🚨 ERROR: Missing STEAM_OPENID_URL in environment variables")
+		log.Println("Missing STEAM_OPENID_URL in environment variables")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Missing STEAM_OPENID_URL"})
 		return
 	}
@@ -81,7 +81,7 @@ func SteamCallback(c *gin.Context) {
 	// Extract JWT token from request headers
 	tokenString := c.Query("token")
 	if tokenString == "" {
-		log.Println("🚨 ERROR: Missing token in Steam callback request")
+		log.Println("ERROR: Missing token in Steam callback request")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -89,7 +89,7 @@ func SteamCallback(c *gin.Context) {
 	// Extract the claimed steam ID
 	steamID := extractSteamID(c.Query("openid.claimed_id"))
 	if steamID == "" {
-		log.Println("🚨 ERROR: Failed to extract Steam ID from OpenID response")
+		log.Println("ERROR: Failed to extract Steam ID from OpenID response")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Steam authentication failed"})
 		return
 	}
@@ -99,7 +99,7 @@ func SteamCallback(c *gin.Context) {
 	//Extract user ID from JWT token
 	userID, err := extractUserIDFromToken(tokenString)
 	if err != nil {
-		log.Println("🚨 ERROR: Failed to extract user ID from token:", err)
+		log.Println("ERROR: Failed to extract user ID from token:", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
@@ -110,24 +110,24 @@ func SteamCallback(c *gin.Context) {
 	var user models.User
 	result := database.DB.First(&user, userID)
 	if result.Error != nil {
-		log.Println("🚨 ERROR: User not found:", result.Error)
+		log.Println("ERROR: User not found:", result.Error)
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
 	user.SteamID = steamID
 	if err := database.DB.Save(&user).Error; err != nil {
-		log.Println("🚨 ERROR: Failed to save Steam ID to user:", err)
+		log.Println("ERROR: Failed to save Steam ID to user:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save Steam ID"})
 		return
 	}
 
-	log.Println("✅ Steam ID successfully linked to user:", userID)
+	log.Println("Steam ID successfully linked to user:", userID)
 
 	// Redirect user to frontend
 	frontendURL := os.Getenv("FRONTEND_URL")
 	redirectTo := fmt.Sprintf("%s/profile", frontendURL)
-	log.Println("✅ Redirecting user to:", redirectTo)
+	log.Println("Redirecting user to:", redirectTo)
 	c.Redirect(http.StatusFound, redirectTo)
 }
 
@@ -158,7 +158,7 @@ func extractSteamID(claimedID string) string {
 
 	parsedURL, err := url.Parse(claimedID)
 	if err != nil {
-		log.Println("🚨 ERROR: Failed to parse Steam OpenID URL:", err)
+		log.Println("ERROR: Failed to parse Steam OpenID URL:", err)
 		return ""
 	}
 

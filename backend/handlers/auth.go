@@ -17,8 +17,8 @@ import (
 func getJWTSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		log.Println("🚨 WARNING: JWT_SECRET is not set! Using a default value (not secure).")
-		secret = "default-secret-key" // ❗ Change this to a secure value in production!
+		log.Println("JWT_SECRET is not set! Using a default value (not secure).")
+		secret = "default-secret-key"
 	}
 	return []byte(secret)
 }
@@ -50,7 +50,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	log.Println("✅ User registered successfully:", user.Email)
+	log.Println("User registered successfully:", user.Email)
 	c.JSON(http.StatusCreated, gin.H{"message": "User registered successfully!"})
 }
 
@@ -89,12 +89,12 @@ func Login(c *gin.Context) {
 	// Generate JWT token if matches
 	token, err := generateJWT(user)
 	if err != nil {
-		log.Println("🚨 ERROR: Failed to generate JWT:", err)
+		log.Println("ERROR: Failed to generate JWT:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	log.Println("✅ User logged in successfully:", input.Email)
+	log.Println("User logged in successfully:", input.Email)
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
@@ -110,9 +110,9 @@ func generateJWT(user models.User) (string, error) {
 	signedToken, err := token.SignedString(jwtSecret)
 
 	if err != nil {
-		log.Println("🚨 ERROR: Failed to sign JWT:", err)
+		log.Println("ERROR: Failed to sign JWT:", err)
 	} else {
-		log.Println("✅ JWT generated successfully for:", user.Email)
+		log.Println("JWT generated successfully for:", user.Email)
 	}
 
 	return signedToken, err
