@@ -3,16 +3,28 @@ import axios from "axios";
 import { Button } from "./ui/button"; 
 import { Input } from "./ui/input"; 
 import { Card, CardContent } from "./ui/card";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
+const Login = ({ setIsLoggedIn }: { setIsLoggedIn: (loggedIn: boolean) => void }) => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (localStorage.getItem("token")) {
-      window.location.href = "/profile";
-    }
-  }, []);
+    const checkAuth = async () => {
+      try {
+        await axios.get(`${process.env.REACT_APP_API_URL}/user/profile`, {
+          withCredentials: true, 
+        });
+        setIsLoggedIn(true); // ✅ Update auth state
+        navigate("/profile");
+      } catch (error) {
+        console.log("User not authenticated");
+      }
+    };
+
+    checkAuth();
+  }, [navigate, setIsLoggedIn]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -20,23 +32,18 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const apiUrl = `${process.env.REACT_APP_API_URL}/auth/login`;
-  
-    console.log("Sending login request to:", apiUrl);
-    console.log("Payload:", form);
-  
     try {
-      const response = await axios.post(apiUrl, form);
-      console.log("Login successful! Response:", response.data);
-  
-      localStorage.setItem("token", response.data.token);
-      window.location.href = "/profile";
+      await axios.post(`${process.env.REACT_APP_API_URL}/auth/login`, form, {
+        withCredentials: true, 
+      });
+
+      setIsLoggedIn(true); // ✅ Update auth state immediately
+      navigate("/profile");
     } catch (error: any) {
-      console.error("Login failed! Error:", error.response?.data || error.message);
+      console.error("Login failed!", error.response?.data || error.message);
       setMessage("Invalid credentials.");
     }
   };
-  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">

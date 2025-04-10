@@ -9,7 +9,7 @@ services:
       db:
         condition: service_healthy
     env_file:
-      - backend/backend.env
+      - backend/.env
     environment:
       DB_HOST: db
       DB_USER: postgres
@@ -17,6 +17,18 @@ services:
       DB_NAME: gamestats
       DB_PORT: 5432
       JWT_SECRET: "supersecretkey"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_API_URL: http://localhost:8080
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
   db:
     image: postgres:15

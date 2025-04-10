@@ -1,62 +1,72 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import axios from "axios";
 import Register from "./components/register";
 import Login from "./components/login";
 import Profile from "./components/profile";
-import { Button } from "./components/ui/button";
+import Navbar from "./components/navbar";
 import Statistics from "./components/Statistics";
 
 const PrivateRoute = ({ element }: { element: React.JSX.Element }) => {
-  const token = localStorage.getItem("token");
-  return token ? element : <Navigate to="/login" />;
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await axios.get(`${process.env.REACT_APP_API_URL}/user/profile`, {
+          withCredentials: true,
+        });
+        setIsAuthenticated(true);
+      } catch {
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isAuthenticated === null) return <p>Loading...</p>;
+  return isAuthenticated ? element : <Navigate to="/login" />;
 };
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  const checkAuth = async () => {
+    try {
+      await axios.get(`${process.env.REACT_APP_API_URL}/user/profile`, {
+        withCredentials: true,
+      });
+      setIsLoggedIn(true);
+    } catch {
+      setIsLoggedIn(false);
+    }
+  };
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token")); // Check if token exists
+    checkAuth();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token"); // Remove token
-    setIsLoggedIn(false);
-    window.location.href = "/login"; // Redirect to login
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${process.env.REACT_APP_API_URL}/auth/logout`, {}, { withCredentials: true });
+      setIsLoggedIn(false); // Update state immediately
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
   };
 
   return (
     <Router>
-      {/* 🔹 Navigation Bar with Tailwind */}
-      <nav className="bg-gray-800 p-4 flex justify-between items-center">
-        <div className="text-white text-xl font-bold">Elo Insight</div>
-        <div>
-          {!isLoggedIn ? (
-            <>
-              <Link to="/register" className="text-gray-300 hover:text-white mx-2">Register</Link>
-              <Link to="/login">
-  <Button className="ml-2">Login</Button>
-</Link>
-            </>
-          ) : (
-            <>
-              <Link to="/profile" className="text-gray-300 hover:text-white mx-2">Profile</Link>
-              <Link to="/statistics" className="text-gray-300 hover:text-white mx-2">Statistics</Link>
-              <Button onClick={handleLogout} className="bg-red-500 hover:bg-red-700 ml-4">
-                Logout
-              </Button>
-            </>
-          )}
-        </div>
-      </nav>
-
-      {/* 🔹 Routes */}
+      {/* Pass `isLoggedIn` and `setIsLoggedIn` to Navbar */}
+      <Navbar isLoggedIn={isLoggedIn} handleLogout={handleLogout} />
       <div className="flex justify-center items-center min-h-screen bg-gray-900 text-white">
         <Routes>
           <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/statistics" element={<Statistics />} />
+          <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} /> {/* Pass `setIsLoggedIn` */}
+          <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
+          <Route path="/statistics" element={<PrivateRoute element={<Statistics />} />} />
         </Routes>
       </div>
     </Router>

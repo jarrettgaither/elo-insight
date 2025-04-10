@@ -4,19 +4,16 @@ import (
 	"log"
 	"os"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
 	"elo-insight/backend/database"
+	"elo-insight/backend/middleware"
 	"elo-insight/backend/routes"
 )
 
 func main() {
-	// Load environment variables
-	err := os.Getenv("JWT_SECRET")
-	if err == "" {
-		log.Println("Warning: No JWT_SECRET found in .env")
-	}
+
+	middleware.Init() // Load environment variables
 
 	// Connect to the database
 	database.ConnectDB()
@@ -24,14 +21,20 @@ func main() {
 	// Create a new router
 	r := gin.Default()
 
-	// Configure CORS, make sure to allow requests from the frontend server
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // ✅ Allow frontend requests
-		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-	}))
+	// Set up CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Set up routes AFTER applying CORS
 	routes.SetupRoutes(r)

@@ -6,14 +6,14 @@ import (
 )
 
 // User represents a user in the database
-// User represents a user in the database
 type User struct {
 	gorm.Model
-	Username string `gorm:"unique;not null"`
-	Email    string `gorm:"unique;not null"`
-	Password string `gorm:"not null"`
-	SteamID  string `gorm:"unique"`
-	RiotID   string `gorm:"unique"`
+	Username   string `gorm:"not null"`
+	Email      string `gorm:"not null"`
+	Password   string `gorm:"not null"`
+	SteamID    string `gorm:"default:''"`
+	RiotID     string `gorm:"default:''"`
+	EAUsername string `gorm:"default:''"` // EA account username for Apex Legends
 }
 
 // Hashes the user's password before storing it

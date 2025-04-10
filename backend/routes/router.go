@@ -7,22 +7,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Setups up routes for the application
+// Set up routes for the application
 func SetupRoutes(r *gin.Engine) {
 	// Auth routes (Public)
 	auth := r.Group("/auth")
 	{
 		auth.POST("/register", handlers.Register)
 		auth.POST("/login", handlers.Login)
-		auth.GET("/steam/login", handlers.SteamLogin)
 		auth.GET("/steam/callback", handlers.SteamCallback)
+		auth.GET("/riot/callback", handlers.RiotCallback)
+		auth.POST("/logout", handlers.Logout)
 	}
-
-	// User routes (Protected)
-	userRoutes := r.Group("/user")
-	userRoutes.Use(middleware.RequireAuth())
+	// Protected routes (Requires JWT)
+	protected := r.Group("/")
+	protected.Use(middleware.RequireAuth())
 	{
-		userRoutes.GET("/profile", handlers.GetProfile)
+		protected.GET("/user/profile", handlers.GetProfile)
+		protected.GET("/steam/login", handlers.SteamLogin)
+		protected.GET("/riot/login", handlers.RiotLogin)
+		protected.POST("/ea/link", handlers.LinkEAAccount) // Add EA account linking endpoint
 	}
+	// User stats routes
+	stats := r.Group("/user/stats")
+	stats.Use(middleware.RequireAuth()) // Requires authentication
+	{
+		stats.POST("/save", handlers.SaveStatSelection) // Save selected game & platform
+		stats.GET("/", handlers.GetUserStats)           // Fetch saved stat cards
+		stats.DELETE("/:id", handlers.DeleteStatCard)   // Delete a stat card
+	}
+	// Public stats routes
 	r.GET("/api/stats/cs2", handlers.GetCS2Stats)
+	r.GET("/api/stats/apex", handlers.GetApexStats) // Apex Legends stats from tracker.gg API
 }

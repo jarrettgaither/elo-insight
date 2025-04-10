@@ -2,13 +2,19 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+
+	"elo-insight/backend/database"
+	"elo-insight/backend/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // Fetch CS2 stats from Steam Web API
@@ -86,4 +92,96 @@ func GetCS2Stats(c *gin.Context) {
 	log.Println("Fetched CS2 Stats:", cs2Stats)
 
 	c.JSON(http.StatusOK, cs2Stats)
+}
+
+func SaveStatSelection(c *gin.Context) {
+	userID, exists := c.Get("userID") // ✅ Get authenticated user ID
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var input models.UserStat
+	if err := c.ShouldBindJSON(&input); err != nil {
+		log.Println("Invalid request:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	userStat := models.UserStat{
+		UserID:   userID.(uint), // ✅ Correctly reference `UserID`
+		Game:     input.Game,
+		Platform: input.Platform,
+	}
+
+	if err := database.DB.Create(&userStat).Error; err != nil {
+		log.Println("Failed to save user stat:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save stat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Stat saved successfully"})
+}
+
+// Fetch user stats
+func GetUserStats(c *gin.Context) {
+	userID, exists := c.Get("userID") // ✅ Get `ID` from JWT
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var stats []models.UserStat
+	if err := database.DB.Where("user_id = ?", userID).Find(&stats).Error; err != nil {
+		log.Println("Failed to fetch user stats:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stats"})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
+
+// Delete a user stat card
+func DeleteStatCard(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Get the stat ID from the URL
+	statID := c.Param("id")
+	if statID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing stat ID"})
+		return
+	}
+
+	// Convert string ID to uint
+	id, err := strconv.ParseUint(statID, 10, 64)
+	if err != nil {
+		log.Println("Invalid stat ID:", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid stat ID"})
+		return
+	}
+
+	// Find the stat and check if it belongs to the user
+	var stat models.UserStat
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&stat).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Stat not found or doesn't belong to user"})
+		} else {
+			log.Println("Failed to find stat:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find stat"})
+		}
+		return
+	}
+
+	// Delete the stat
+	if err := database.DB.Delete(&stat).Error; err != nil {
+		log.Println("Failed to delete stat:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete stat"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Stat deleted successfully"})
 }

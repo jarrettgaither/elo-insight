@@ -27,8 +27,9 @@ func GetProfile(c *gin.Context) {
 
 	// Return user profile data
 	c.JSON(http.StatusOK, gin.H{
-		"username": user.Username,
-		"email":    user.Email,
-		"steam_id": user.SteamID,
+		"username":    user.Username,
+		"email":       user.Email,
+		"steam_id":    user.SteamID,
+		"ea_username": user.EAUsername,
 	})
 }

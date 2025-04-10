@@ -23,7 +23,7 @@ func ConnectDB() { //Create postgres gorm connection string
 	}
 
 	// Run migrations in case user model has changed
-	err = db.AutoMigrate(&models.User{})
+	err = db.AutoMigrate(&models.User{}, &models.UserStat{})
 	if err != nil {
 		log.Fatal("Migration failed:", err)
 	}
