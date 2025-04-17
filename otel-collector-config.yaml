@@ -1,0 +1,57 @@
+# Basic OTLP receiver configuration
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+# Configure exporters - debug to show output in logs, and OTLP to send to OpenObserve
+exporters:
+  # Primary exporter that forwards data to OpenObserve
+  otlp:
+    endpoint: openobserve:5081
+    tls:
+      insecure: true
+    headers:
+      authorization: "Basic YWRtaW5AZXhhbXBsZS5jb206YWRtaW4="  # base64 of admin@example.com:admin
+      organization: "default"
+  
+  # Debug exporter to see trace data in collector logs
+  debug:
+    verbosity: detailed
+
+# Processors for batching and retrying
+processors:
+  batch:
+    # Send smaller batches more frequently
+    send_batch_size: 50
+    timeout: 1s
+  
+  # Memory limiter to prevent crashes under high volume
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 100
+
+# Extension for health checks - used by other services to verify collector is ready
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+# Service configuration that ties everything together
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp, debug]

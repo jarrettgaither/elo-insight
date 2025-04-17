@@ -5,9 +5,13 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    networks:
+      - otel-net
     depends_on:
       db:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     env_file:
       - backend/.env
     environment:
@@ -17,11 +21,14 @@ services:
       DB_NAME: gamestats
       DB_PORT: 5432
       JWT_SECRET: "supersecretkey"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "otel-collector:4317"
 
   frontend:
     build: ./frontend
     ports:
       - "3000:3000"
+    networks:
+      - otel-net
     depends_on:
       - backend
     environment:
@@ -33,6 +40,8 @@ services:
   db:
     image: postgres:15
     restart: always
+    networks:
+      - otel-net
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -47,5 +56,47 @@ services:
       retries: 5
       timeout: 3s
 
+  # OTEL Collector with proper configuration
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    networks:
+      - otel-net
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    restart: unless-stopped
+    # Simple dependency - start after OpenObserve
+    depends_on:
+      - openobserve
+    environment:
+      - WAIT_HOSTS=openobserve:5080
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=10
+      - WAIT_HOST_CONNECT_TIMEOUT=30
+
+  # OpenObserve with proper OTLP configuration
+  openobserve:
+    image: openobserve/openobserve:latest
+    networks:
+      - otel-net
+    environment:
+      - ZO_ROOT_USER_EMAIL=admin@example.com
+      - ZO_ROOT_USER_PASSWORD=admin
+      - ZO_OTLP_GRPC_ENABLED=true
+      - ZO_OTLP_HTTP_ENABLED=true
+    ports:
+      - "5080:5080" # Web UI
+      - "5081:5081" # gRPC
+    volumes:
+      - openobserve-data:/data
+
 volumes:
   db-data:
+  openobserve-data:
+
+networks:
+  otel-net:
+    driver: bridge
