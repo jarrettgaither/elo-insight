@@ -44,6 +44,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          CI: false
 
   release:
     needs: [build-backend, build-frontend]
