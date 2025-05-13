@@ -293,14 +293,13 @@ const useStats = () => {
           }
         })
       ).then(updatedStats => {
-        // Only update state if we have results and component is still mounted
-        if (updatedStats.length > 0) {
-          console.log("Setting updated stats:", updatedStats);
-          setStats(updatedStats);
-        }
-      }).catch(error => {
-        console.error("❌ Error updating stats:", error);
-      });
+        // This actually updates the state with the fetched data
+        console.log("Updating stats with freshly fetched data:", updatedStats);
+        setStats(updatedStats);
+      })
+      .catch(error => {
+        console.error("Error in fetchUpdatedStats:", error);
+      }); 
       
       // Return the current stats while the async operation is in progress
       return currentStats;
@@ -829,21 +828,75 @@ const useStats = () => {
     }
   };
 
+  // Track which games have been fetched to prevent duplicate calls
+  const [fetchedGames, setFetchedGames] = useState<Record<string, number>>({});
+  
+  // Create a wrapped version of fetchUpdatedStats that prevents duplicate API calls
+  const throttledFetchStats = useCallback(async () => {
+    if (!profile) return;
+    
+    console.log("Running throttled fetch stats");
+    
+    // Only fetch stats for games that haven't been fetched recently (within 30 seconds)
+    const now = Date.now();
+    const staleFetchWindow = 30000; // 30 seconds
+    
+    // Determine which games we need to update based on recency
+    const gamesToUpdate = stats.filter(stat => {
+      const gameKey = `${stat.game}_${stat.platform}`;
+      const lastFetchTime = fetchedGames[gameKey] || 0;
+      const shouldUpdate = now - lastFetchTime > staleFetchWindow;
+      
+      console.log(`Game ${stat.game}: Last fetched ${(now - lastFetchTime)/1000}s ago, should update: ${shouldUpdate}`);
+      return shouldUpdate;
+    });
+    
+    if (gamesToUpdate.length === 0) {
+      console.log("All games have been recently fetched, skipping API calls");
+      return;
+    }
+    
+    // Update the fetch timestamps before making API calls to prevent race conditions
+    const newFetchedGames = {...fetchedGames};
+    gamesToUpdate.forEach(stat => {
+      const gameKey = `${stat.game}_${stat.platform}`;
+      newFetchedGames[gameKey] = now;
+    });
+    setFetchedGames(newFetchedGames);
+    
+    console.log(`Fetching updated stats for ${gamesToUpdate.length} games:`, 
+      gamesToUpdate.map(s => s.game).join(", "));
+    
+    // Now call the actual update function
+    await fetchUpdatedStats();
+  }, [profile, stats, fetchedGames, fetchUpdatedStats]);
+  
+  // Initial setup - fetch profile and user stats only once
   useEffect(() => {
     console.log("Initial fetch of profile and user stats");
     fetchProfile();
     fetchUserStats();
   }, [fetchProfile, fetchUserStats]);
 
-  // Only run this effect when profile changes, not when stats change
+  // Only update game stats once on initial load
+  const [initialStatsFetched, setInitialStatsFetched] = useState(false);
   useEffect(() => {
-    if (profile && stats.length > 0) {
-      console.log("Profile or stats changed, fetching updated stats");
-      fetchUpdatedStats();
+    if (profile && stats.length > 0 && !initialStatsFetched) {
+      console.log("Initial stats available, performing first fetch");
+      throttledFetchStats();
+      setInitialStatsFetched(true);
     }
-  }, [profile, fetchUpdatedStats, stats.length]);
+  }, [profile, stats.length, initialStatsFetched, throttledFetchStats]);
 
-  return { stats, profile, fetchUpdatedStats, saveStatSelection, deleteStatCard };
+  // Use the throttled fetch for refreshing to prevent duplicate calls
+  return { 
+    stats, 
+    profile, 
+    // Replace the direct fetchUpdatedStats with our throttled version for external use
+    fetchUpdatedStats: throttledFetchStats, 
+    saveStatSelection, 
+    deleteStatCard 
+  };
 };
 
 export default useStats;
