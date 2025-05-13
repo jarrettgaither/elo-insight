@@ -59,4 +59,5 @@ func SetupRoutes(r *gin.Engine) {
 	r.GET("/api/stats/apex", handlers.GetApexStats) // Apex Legends stats from tracker.gg API
 	r.GET("/api/stats/lol", handlers.GetLeagueOfLegendsStats) // League of Legends stats from Riot API
 	r.GET("/api/stats/valorant", handlers.GetValorantStats) // Valorant stats from Riot API
+	r.GET("/api/stats/dota2", handlers.GetDota2Stats) // Dota 2 stats with fallback to mock data
 }

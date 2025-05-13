@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Button } from "./ui/button";
 
 // Full list of available games
-const availableGames = ["CS2", "Apex Legends", "Valorant", "League of Legends", "Call of Duty"]; 
+const availableGames = ["CS2", "Dota 2", "Apex Legends", "Valorant", "League of Legends", "Call of Duty"]; 
 
 // Game to platform mapping
 const gamePlatforms: Record<string, string[]> = {
   "CS2": ["Steam"],
+  "Dota 2": ["Steam"],
   "Apex Legends": ["EA", "PlayStation", "Xbox"],
   "Valorant": ["Riot"],
   "League of Legends": ["Riot"],
@@ -22,6 +23,8 @@ const AddStatModal = ({
     steam_id?: string;
     ea_username?: string;
     riot_id?: string;
+    riot_game_name?: string;
+    riot_tagline?: string;
     xbox_id?: string;
     playstation_id?: string; 
   } | null;
@@ -49,7 +52,7 @@ const AddStatModal = ({
     const linkedPlatforms = platforms.filter(platform => {
       if (platform === "Steam" && profile?.steam_id) return true;
       if (platform === "EA" && profile?.ea_username) return true;
-      if (platform === "Riot" && profile?.riot_id) return true;
+      if (platform === "Riot" && profile?.riot_game_name && profile?.riot_tagline) return true;
       if (platform === "Xbox" && profile?.xbox_id) return true;
       if (platform === "PlayStation" && profile?.playstation_id) return true;
       if (platform === "Battle.net") return true; // No linking required for now

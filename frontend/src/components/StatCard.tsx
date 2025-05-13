@@ -54,7 +54,10 @@ interface StatData {
   game: string;
   platform: string;
   data: any;
+  lastFetched?: number; // Timestamp when the data was last fetched
+  isLoading?: boolean; // Flag to indicate if data is currently being fetched
   onDelete?: (id: number) => void;
+  onRefresh?: (id: number) => void; // Function to refresh the stat card
 }
 
 const StatCard = ({ stat }: { stat: StatData }) => {
@@ -76,6 +79,13 @@ const StatCard = ({ stat }: { stat: StatData }) => {
       if (window.confirm(`Are you sure you want to delete this ${stat.game} stats card?`)) {
         stat.onDelete(stat.ID);
       }
+    }
+  };
+  
+  const handleRefresh = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card expansion when clicking refresh
+    if (stat.ID && stat.onRefresh) {
+      stat.onRefresh(stat.ID);
     }
   };
 
@@ -213,12 +223,16 @@ const StatCard = ({ stat }: { stat: StatData }) => {
 
     if (stat.game === "CS2") {
       return renderCS2Stats();
+    } else if (stat.game === "Dota 2") {
+      return renderDota2Stats();
     } else if (stat.game === "Apex Legends") {
       return renderApexStats();
     } else if (stat.game === "League of Legends") {
       return renderLeagueStats();
     } else if (stat.game === "Valorant") {
       return renderValorantStats();
+    } else if (stat.game === "Call of Duty") {
+      return renderCoDStats();
     } else {
       return <p className="text-gray-400">Stats not available for {stat.game}.</p>;
     }
@@ -551,7 +565,8 @@ const StatCard = ({ stat }: { stat: StatData }) => {
     // Return the JSX for League stats
     return (
       <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Summoner Info */}
           <div className="bg-gray-700 p-6 rounded-lg">
             <h3 className="text-xl font-semibold mb-4">Summoner Information</h3>
@@ -646,215 +661,353 @@ const StatCard = ({ stat }: { stat: StatData }) => {
           
           {/* Champion Statistics */}
           <div className="bg-gray-700 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Top Champions</h3>
-            {stat.data.topChampions && stat.data.topChampions.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
-                {stat.data.topChampions.map((champion: any, index: number) => (
-                  <div key={index} className="flex items-center gap-4 border-b border-gray-600 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
-                    <div className="w-12 h-12 overflow-hidden rounded-full bg-gray-600">
+  <h3 className="text-xl font-semibold mb-4">Top Champions</h3>
+  {stat.data.champions && stat.data.champions.length > 0 ? (
+    <div className="grid grid-cols-1 gap-4">
+      {stat.data.champions.map((champion: any, index: number) => (
+        <div key={index} className="flex items-center gap-4 border-b border-gray-600 pb-3 mb-3 last:border-0 last:mb-0 last:pb-0">
+          <div className="w-12 h-12 overflow-hidden rounded-full bg-gray-600">
+            <img 
+              src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${champion.ChampionName || champion.championName}.png`} 
+              alt={champion.ChampionName || champion.championName}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = 'https://via.placeholder.com/48?text=Champ';
+              }}
+            />
+          </div>
+          <div className="flex-1">
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold">{champion.ChampionName || champion.championName}</h4>
+              <p className={`text-sm ${champion.KDA >= 3 ? 'text-green-400' : champion.KDA >= 2 ? 'text-yellow-400' : 'text-red-400'}`}>
+                {(champion.KDA ?? champion.kda)?.toFixed(2)} KDA
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-1">
+              <p className="text-sm text-gray-400">{champion.Games ?? champion.games} games</p>
+              <p className="text-sm">
+                <span className="text-green-400">{champion.Wins ?? champion.wins}W</span> / 
+                <span className="text-red-400">{champion.Losses ?? champion.losses}L</span> 
+                (<span className={`${((champion.Wins ?? champion.wins) / (champion.Games ?? champion.games)) * 100 > 50 ? 'text-green-400' : 'text-red-400'}`}>
+                  {Math.round(((champion.Wins ?? champion.wins) / (champion.Games ?? champion.games)) * 100)}%
+                </span>)
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="text-gray-400">No champion data available</p>
+  )}
+</div>
+{/* Performance Statistics Section */}
+<div className="bg-gray-700 p-6 rounded-lg mt-8">
+  <h3 className="text-xl font-semibold mb-4">Performance Statistics</h3>
+  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+    {/* Win Rate */}
+    <div>
+      <h4 className="font-semibold">Win Rate</h4>
+      <p className="text-2xl">{matches.totalGames ? `${Math.round(((Number(matches.wins) || 0) / (Number(matches.totalGames) || 1)) * 100)}%` : "N/A"}</p>
+      <p className="text-sm text-gray-400">
+        {Number(matches.wins) || 0}W {Number(matches.losses) || 0}L
+      </p>
+    </div>
+    {/* CS Stats */}
+    <div>
+      <h4 className="font-semibold">CS/min</h4>
+      <p className="text-2xl">{matches?.averageCS?.toFixed(1) || "N/A"}</p>
+      <p className="text-sm text-gray-400">
+        {matches?.totalCS && matches?.totalGames ? Math.round(matches.totalCS / matches.totalGames) : 0} CS/game
+      </p>
+    </div>
+    {/* Vision Score */}
+    <div>
+      <h4 className="font-semibold">Vision Score</h4>
+      <p className="text-2xl">{matches?.averageVision?.toFixed(1) || matches?.averageVisionScore?.toFixed(1) || "N/A"}</p>
+      <p className="text-sm text-gray-400">
+        {matches?.wardsPlaced && matches?.totalGames ? Math.round(matches.wardsPlaced / matches.totalGames) : 0} wards/game
+      </p>
+    </div>
+    {/* Objectives */}
+    <div>
+      <h4 className="font-semibold">Objectives</h4>
+      <p className="text-2xl">{matches?.objectiveControl?.toFixed(1) || matches?.objectiveParticipation?.toFixed(1) || "N/A"}</p>
+      <p className="text-sm text-gray-400">Objective participation</p>
+    </div>
+    {/* Kill Participation */}
+    <div>
+      <h4 className="font-semibold">Kill Participation</h4>
+      <p className="text-2xl">{matches?.killParticipation?.toFixed(1) || "N/A"}%</p>
+      <p className="text-sm text-gray-400">Team fight involvement</p>
+    </div>
+  </div>
+  {/* Radar Chart for stats */}
+  <div className="mt-8">
+    <h4 className="font-semibold mb-2">Performance Radar</h4>
+    <div className="h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart
+          cx="50%"
+          cy="50%"
+          outerRadius="80%"
+          data={[
+            { subject: 'KDA', A: Number(matches.kda) * 20 || 0, fullMark: 100 },
+            { subject: 'Win Rate', A: matches.totalGames ? ((Number(matches.wins) / (Number(matches.totalGames) || 1)) * 100) : 0, fullMark: 100 },
+            { subject: 'CS/min', A: matches.averageCS ? Number(matches.averageCS) * 10 : 0, fullMark: 100 },
+            { subject: 'Vision', A: matches.averageVisionScore ? Number(matches.averageVisionScore) * 10 : 0, fullMark: 100 },
+            { subject: 'Objectives', A: matches.objectiveParticipation ? Number(matches.objectiveParticipation) : 0, fullMark: 100 },
+            { subject: 'Kill Part.', A: matches.killParticipation ? Number(matches.killParticipation) : 0, fullMark: 100 },
+          ]}
+        >
+          <PolarGrid stroke="#444" />
+          <PolarAngleAxis dataKey="subject" stroke="#fff" />
+          <PolarRadiusAxis stroke="#fff" />
+          <Radar name="Performance" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+          <Legend />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+</div>
+{/* Role Performance */}
+        {matches?.roleStats && Object.keys(matches.roleStats).length > 0 && (
+          <div className="bg-gray-700 p-6 rounded-lg mt-8">
+              <h3 className="text-xl font-semibold mb-4">Role Performance</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {Object.entries(matches.roleStats).map(([role, stats]: [string, any], index: number) => (
+                  <div key={index} className="bg-gray-800 p-4 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
                       <img 
-                        src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${champion.championName}.png`} 
-                        alt={champion.championName}
-                        className="w-full h-full object-cover"
+                        src={`/images/roles/${role.toLowerCase()}.png`}
+                        alt={role}
+                        className="w-6 h-6"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/48?text=Champ';
+                          target.src = 'https://via.placeholder.com/24?text=R';
                         }}
                       />
+                      <p className="font-semibold">{role}</p>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-semibold">{champion.championName}</h4>
-                        <p className={`text-sm ${champion.kda >= 3 ? 'text-green-400' : champion.kda >= 2 ? 'text-yellow-400' : 'text-red-400'}`}>
-                          {champion.kda.toFixed(2)} KDA
-                        </p>
+                    <p className="text-sm">
+                      <span className={stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'}>
+                        {stats.winRate.toFixed(0)}%
+                      </span> Win Rate
+                    </p>
+                    <p className="text-sm text-gray-400">{stats.games} games</p>
+                    <p className="text-sm text-gray-400">{stats.kda.toFixed(2)} KDA</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Matches */}
+          <div className="bg-gray-700 p-6 rounded-lg mt-8">
+            <h3 className="text-xl font-semibold mb-4">Recent Matches</h3>
+            {matches?.recentMatches && matches.recentMatches.length > 0 ? (
+              <div className="space-y-3">
+                {matches.recentMatches.map((match: any, index: number) => (
+                  <div key={index} className={`p-3 rounded-lg flex justify-between items-center ${match.win ? 'bg-blue-900/30' : 'bg-red-900/30'}`}>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p className="font-semibold">{match.championName}</p>
+                        <p className="text-sm text-gray-400">{match.lane} • {match.win ? 'Victory' : 'Defeat'}</p>
                       </div>
-                      <div className="flex justify-between items-center mt-1">
-                        <p className="text-sm text-gray-400">{champion.games} games</p>
-                        <p className="text-sm">
-                          <span className="text-green-400">{champion.wins}W</span> / 
-                          <span className="text-red-400">{champion.losses}L</span> 
-                          (<span className={`${(champion.wins / champion.games) * 100 > 50 ? 'text-green-400' : 'text-red-400'}`}>
-                            {Math.round((champion.wins / champion.games) * 100)}%
-                          </span>)
-                        </p>
-                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{match.kills}/{match.deaths}/{match.assists}</p>
+                      <p className="text-sm text-gray-400">{match.cs} CS</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400">No champion data available</p>
+              <p className="text-gray-400">No recent match data available</p>
             )}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}; // End of renderLeagueStats
 
-          {/* Performance Statistics */}
-          <div className="bg-gray-700 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Performance Statistics</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-4">
-              {/* KDA */}
-              <div>
-                <h4 className="font-semibold">KDA</h4>
-                <p className="text-2xl">{matches.kda !== undefined ? (Number(matches.kda) || 0).toFixed(2) : "N/A"}</p>
-                <p className="text-sm text-gray-400">
-                  {(Number(matches.averageKills) || 0).toFixed(1)} / {(Number(matches.averageDeaths) || 0).toFixed(1)} / {(Number(matches.averageAssists) || 0).toFixed(1)}
-                </p>
-              </div>
-              
-              {/* Win Rate */}
-              <div>
-                <h4 className="font-semibold">Win Rate</h4>
-                <p className="text-2xl">{matches.totalGames ? `${Math.round(((Number(matches.wins) || 0) / (Number(matches.totalGames) || 1)) * 100)}%` : "N/A"}</p>
-                <p className="text-sm text-gray-400">
-                  {Number(matches.wins) || 0}W {Number(matches.losses) || 0}L
-                </p>
-              </div>
-              
-              {/* CS Stats */}
-              <div>
-                <h4 className="font-semibold">CS/min</h4>
-                <p className="text-2xl">{matches?.averageCS?.toFixed(1) || "N/A"}</p>
-                <p className="text-sm text-gray-400">
-                  {matches?.totalCS && matches?.totalGames ? Math.round(matches.totalCS / matches.totalGames) : 0} CS/game
-                </p>
-              </div>
-              
-              {/* Vision Score */}
-              <div>
-                <h4 className="font-semibold">Vision Score</h4>
-                <p className="text-2xl">{matches?.averageVisionScore?.toFixed(1) || "N/A"}</p>
-                <p className="text-sm text-gray-400">
-                  {matches?.wardsPlaced && matches?.totalGames ? Math.round(matches.wardsPlaced / matches.totalGames) : 0} wards/game
-                </p>
-              </div>
-              
-              {/* Objectives */}
-              <div>
-                <h4 className="font-semibold">Objectives</h4>
-                <p className="text-2xl">{matches?.objectiveParticipation?.toFixed(1) || "N/A"}%</p>
-                <p className="text-sm text-gray-400">Objective participation</p>
-              </div>
-            
+  // Render Dota 2 stats
+  const renderDota2Stats = () => {
+    // Check if we have the necessary data
+    if (!stat.data || stat.data.error) {
+      return (
+        <div className="text-center py-4">
+          <p className="text-red-400">{stat.data?.error || "No Dota 2 stats available"}</p>
+        </div>
+      );
+    }
+
+    // Basic stats for compact view
+    if (!expanded) {
+      return (
+        <div className="bg-gradient-to-br from-red-900/20 to-red-600/10 rounded-md p-4">
+          <div className="text-center mb-2">
+            <h3 className="text-xl font-bold text-white">{stat.data.player_name || "Dota 2 Player"}</h3>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-green-400">{stat.data.win_rate || "0"}%</p>
+              <p className="text-xs text-gray-300">Win Rate</p>
             </div>
-            
-            {/* Recent Streak */}
-            <div className="mt-6">
-              <h4 className="font-semibold mb-2">Recent Streak</h4>
-              <p className="text-2xl">
-                {matches?.currentStreak ? 
-                  (matches.currentStreakType === "win" ? 
-                    <span className="text-green-400">+{matches.currentStreak}W</span> : 
-                    <span className="text-red-400">-{matches.currentStreak}L</span>) : 
-                  "N/A"}
-              </p>
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-blue-400">{stat.data.kda || "0"}</p>
+              <p className="text-xs text-gray-300">KDA</p>
+            </div>
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-yellow-400">{stat.data.games_played || 0}</p>
+              <p className="text-xs text-gray-300">Games</p>
+            </div>
+          </div>
+          
+          {/* Show top hero if available */}
+          {stat.data.heroes && stat.data.heroes.length > 0 && (
+            <div className="flex items-center justify-center mt-2">
+              <div className="flex items-center">
+                {stat.data.heroes[0].icon ? (
+                  <img src={stat.data.heroes[0].icon} alt={stat.data.heroes[0].name} className="w-8 h-8 rounded-full mr-2" />
+                ) : (
+                  <div className="w-8 h-8 bg-gray-700 rounded-full mr-2 flex items-center justify-center">
+                    <span>{stat.data.heroes[0].name.charAt(0)}</span>
+                  </div>
+                )}
+                <span className="text-sm text-gray-300">Top Hero: {stat.data.heroes[0].name}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Expanded view with detailed stats
+    return (
+      <div className="space-y-8">
+        {/* Header with player info */}
+        <div className="bg-gradient-to-br from-red-900/20 to-red-600/10 rounded-lg p-6 text-center">
+          <h2 className="text-3xl font-bold text-white mb-2">{stat.data.player_name || "Dota 2 Player"}</h2>
+          <div className="flex justify-center space-x-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.win_rate || "0"}%</p>
+              <p className="text-sm text-gray-300">Win Rate</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.kda || "0"}</p>
+              <p className="text-sm text-gray-300">KDA</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-400">{stat.data.games_played || 0}</p>
+              <p className="text-sm text-gray-300">Games</p>
             </div>
           </div>
         </div>
-        
-        {/* Recent Matches */}
-        <div className="bg-gray-700 p-6 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">Recent Matches</h3>
-          {matches?.recentMatches && matches.recentMatches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {matches.recentMatches.map((match: any, index: number) => (
-                <div key={index} className="bg-gray-800 p-4 rounded-lg flex items-center gap-4">
-                  {match.championId && (
-                    <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-700 flex-shrink-0">
-                      <img 
-                        src={`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${match.championImage || match.championId}.png`}
-                        alt={match.championName}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/56?text=Champ';
-                        }}
-                      />
-                    </div>
-                  )}
+
+        {/* Overview section */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Overview</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-white">{stat.data.games_played || 0}</p>
+              <p className="text-sm text-gray-400">Games Played</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.wins || 0}</p>
+              <p className="text-sm text-gray-400">Wins</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-red-400">{stat.data.losses || 0}</p>
+              <p className="text-sm text-gray-400">Losses</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.win_rate || "0"}%</p>
+              <p className="text-sm text-gray-400">Win Rate</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Combat stats */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Combat Stats</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.kills || 0}</p>
+              <p className="text-sm text-gray-400">Kills</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-red-400">{stat.data.deaths || 0}</p>
+              <p className="text-sm text-gray-400">Deaths</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-yellow-400">{stat.data.assists || 0}</p>
+              <p className="text-sm text-gray-400">Assists</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.kda || "0"}</p>
+              <p className="text-sm text-gray-400">KDA Ratio</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance radar chart */}
+        {stat.data.performance && stat.data.performance.length > 0 && (
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-white">Performance</h3>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart outerRadius="80%" data={stat.data.performance}>
+                  <PolarGrid stroke="#444" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#ccc' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#ccc' }} />
+                  <Radar name="Player" dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                  <Tooltip />
+                  <Legend />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Hero stats */}
+        {stat.data.heroes && stat.data.heroes.length > 0 && (
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-white">Top Heroes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {stat.data.heroes.slice(0, 5).map((hero: any, index: number) => (
+                <div key={index} className="bg-gray-800/80 p-4 rounded-lg flex items-center">
+                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mr-4">
+                    {hero.icon ? (
+                      <img src={hero.icon} alt={hero.name} className="w-10 h-10 rounded-full" />
+                    ) : (
+                      <span className="text-2xl">{hero.name.charAt(0)}</span>
+                    )}
+                  </div>
                   <div>
-                    <p className="font-semibold">{match.championName}</p>
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm">
-                        <span className="text-green-400">{match.kda?.toFixed(2) || '0.00'}</span> KDA
-                      </p>
-                      <p className="text-sm text-gray-400 ml-2">
-                        {match.games || 1} games
-                      </p>
-                    </div>
+                    <p className="font-bold">{hero.name}</p>
                     <p className="text-sm text-gray-400">
-                      {match.wins || 0}W {match.losses || 0}L 
-                      <span className={`ml-1 ${(match.winRate || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
-                        ({Math.round(match.winRate || 0)}%)
-                      </span>
+                      {hero.matches} matches, {hero.win_rate}% win rate
                     </p>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400">No match data available</p>
-          )}
-        </div>
-        
-        {/* Role Performance */}
-        {matches?.roleStats && Object.keys(matches.roleStats).length > 0 && (
-          <div className="bg-gray-700 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4">Role Performance</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {Object.entries(matches.roleStats).map(([role, stats]: [string, any], index: number) => (
-                <div key={index} className="bg-gray-800 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <img 
-                      src={`/images/roles/${role.toLowerCase()}.png`}
-                      alt={role}
-                      className="w-6 h-6"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://via.placeholder.com/24?text=R';
-                      }}
-                    />
-                    <p className="font-semibold">{role}</p>
-                  </div>
-                  <p className="text-sm">
-                    <span className={stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'}>
-                      {stats.winRate.toFixed(0)}%
-                    </span> Win Rate
-                  </p>
-                  <p className="text-sm text-gray-400">{stats.games} games</p>
-                  <p className="text-sm text-gray-400">{stats.kda.toFixed(2)} KDA</p>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Recent Matches */}
-        <div className="bg-gray-700 p-6 rounded-lg">
-          <h3 className="text-xl font-semibold mb-4">Recent Matches</h3>
-          {matches?.recentMatches && matches.recentMatches.length > 0 ? (
-            <div className="space-y-3">
-              {matches.recentMatches.map((match: any, index: number) => (
-                <div key={index} className={`p-3 rounded-lg flex justify-between items-center ${match.win ? 'bg-blue-900/30' : 'bg-red-900/30'}`}>
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="font-semibold">{match.championName}</p>
-                      <p className="text-sm text-gray-400">{match.lane} • {match.win ? 'Victory' : 'Defeat'}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{match.kills}/{match.deaths}/{match.assists}</p>
-                    <p className="text-sm text-gray-400">{match.cs} CS</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400">No recent match data available</p>
-          )}
-        </div>
+        {/* Last updated timestamp */}
+        {stat.lastFetched && (
+          <p className="text-xs text-gray-500 text-right">
+            Last updated: {new Date(stat.lastFetched).toLocaleString()}
+          </p>
+        )}
       </div>
     );
-  }; // End of renderLeagueStats
+  };
 
   // Render Valorant stats
   const renderValorantStats = () => {
@@ -869,7 +1022,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
 
     // Log the Valorant data for debugging
     console.log("Rendering Valorant stats with data:", stat.data);
-  
+
     // Extract account information
     const playerName = stat.data.account?.name || "Unknown Player";
     const playerTag = stat.data.account?.tagLine || "";
@@ -885,6 +1038,8 @@ const StatCard = ({ stat }: { stat: StatData }) => {
     const winRate = matchStats.winRate || 0;
     const kdRatio = matchStats.kdRatio || 0;
     const totalMatches = matchStats.totalMatches || 0;
+    const wins = matchStats.wins || 0;
+    const losses = matchStats.losses || 0;
     const averageKills = matchStats.averageKills || 0;
     const averageDeaths = matchStats.averageDeaths || 0;
     const averageAssists = matchStats.averageAssists || 0;
@@ -892,18 +1047,9 @@ const StatCard = ({ stat }: { stat: StatData }) => {
     
     // Extract agent stats
     const agentStats = stat.data.agentStats || [] as ValorantAgentStat[];
-    const topAgents = agentStats.slice(0, 3); // Get top 3 agents
     
     // Extract recent matches
     const recentMatches = stat.data.recentMatches || [] as ValorantMatch[];
-    
-    // Create data for agent stats chart
-    const agentChartData = topAgents.map((agent: ValorantAgentStat) => ({
-      name: agent.agentName,
-      winRate: agent.winRate,
-      matches: agent.matches,
-      kda: agent.kda,
-    }));
     
     // Create data for performance radar chart
     const performanceData = [
@@ -938,176 +1084,293 @@ const StatCard = ({ stat }: { stat: StatData }) => {
     if (!expanded) {
       // Unexpanded view
       return (
-        <div className="bg-gradient-to-br from-red-900/20 to-red-600/10 rounded-md p-4">
-          <div className="text-center mb-4">
+        <div className="bg-gradient-to-br from-purple-900/20 to-purple-600/10 rounded-md p-4">
+          <div className="text-center mb-2">
             <h3 className="text-xl font-bold text-white">{displayName}</h3>
-            <p className="text-gray-300">Level {accountLevel} • {rank}</p>
+            <p className="text-gray-300">Level {accountLevel} • {rank} {rankTier > 0 ? rankTier : ''}</p>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-black/30 p-3 rounded-md text-center">
-            <p className="text-lg font-bold text-green-400">
-  {stat.data?.win_rate?.toFixed(1) || "—"}%
-</p>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-green-400">{winRate.toFixed(1)}%</p>
               <p className="text-xs text-gray-300">Win Rate</p>
             </div>
-            <div className="bg-black/30 p-3 rounded-md text-center">
-            <p className="text-lg font-bold text-blue-400">
-  {stat.data?.total_kills && stat.data?.total_deaths
-    ? (stat.data.total_kills / stat.data.total_deaths).toFixed(2)
-    : stat.data?.matchStats?.kdRatio?.toFixed(2) ??
-      "—"}
-</p>
-
-
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-blue-400">{kdRatio.toFixed(2)}</p>
               <p className="text-xs text-gray-300">K/D Ratio</p>
+            </div>
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-yellow-400">{totalMatches}</p>
+              <p className="text-xs text-gray-300">Matches</p>
             </div>
           </div>
           
-          <div className="text-center">
-          <p className="text-sm text-gray-300">
-  {stat.data?.total_kills ?? stat.data?.matchStats?.totalKills
-    ? `Kills: ${stat.data.total_kills ?? stat.data.matchStats.totalKills}`
-    : "—"}
-</p>
-
-
-          </div>
+          {/* Show top agent if available */}
+          {agentStats.length > 0 && (
+            <div className="flex items-center justify-center mt-2">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-gray-700 rounded-full mr-2 flex items-center justify-center">
+                  <span>{agentStats[0].agentName.charAt(0)}</span>
+                </div>
+                <span className="text-sm text-gray-300">Top Agent: {agentStats[0].agentName}</span>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
     
     // Expanded view
     return (
-      <div className="bg-gradient-to-br from-red-900/20 to-red-600/10 rounded-md p-4">
-        <div className="text-center mb-6">
-          <h3 className="text-2xl font-bold text-white">{displayName}</h3>
+      <div className="space-y-8">
+        {/* Header with player info */}
+        <div className="bg-gradient-to-br from-purple-900/20 to-purple-600/10 rounded-lg p-6 text-center">
+          <h2 className="text-3xl font-bold text-white mb-2">{displayName}</h2>
           <p className="text-gray-300">Level {accountLevel} • {rank} {rankTier > 0 ? rankTier : ''}</p>
+          <div className="flex justify-center space-x-4 mt-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">{winRate.toFixed(1)}%</p>
+              <p className="text-sm text-gray-300">Win Rate</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-400">{kdRatio.toFixed(2)}</p>
+              <p className="text-sm text-gray-300">K/D</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-400">{totalMatches}</p>
+              <p className="text-sm text-gray-300">Matches</p>
+            </div>
+          </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="col-span-2 bg-black/30 p-4 rounded-md">
-            <h4 className="font-semibold mb-2 text-gray-200">Performance Overview</h4>
-            <div className="grid grid-cols-2 gap-y-2 text-sm">
-              <p className="text-gray-300">Matches Played:</p>
-              <p className="text-right text-white">{totalMatches}</p>
-              
-              <p className="text-gray-300">Win Rate:</p>
-              <p className="text-lg font-bold text-green-400">
-  {stat.data?.win_rate?.toFixed(1) ??
-   stat.data?.matchStats?.winRate?.toFixed(1) ??
-   "—"}%
-</p>
+        {/* Overview section */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Overview</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-white">{totalMatches}</p>
+              <p className="text-sm text-gray-400">Matches Played</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{wins}</p>
+              <p className="text-sm text-gray-400">Wins</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-red-400">{losses}</p>
+              <p className="text-sm text-gray-400">Losses</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{winRate.toFixed(1)}%</p>
+              <p className="text-sm text-gray-400">Win Rate</p>
+            </div>
+          </div>
+        </div>
 
-              
-              <p className="text-gray-300">K/D Ratio:</p>
-              <p className="text-right text-blue-400">{kdRatio.toFixed(2)}</p>
-              
-              <p className="text-gray-300">Avg. Combat Score:</p>
-              <p className="text-right text-orange-400">{averageCombatScore.toFixed(1)}</p>
+        {/* Combat stats */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Combat Stats</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{averageKills.toFixed(1)}</p>
+              <p className="text-sm text-gray-400">Avg. Kills</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-red-400">{averageDeaths.toFixed(1)}</p>
+              <p className="text-sm text-gray-400">Avg. Deaths</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-yellow-400">{averageAssists.toFixed(1)}</p>
+              <p className="text-sm text-gray-400">Avg. Assists</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{kdRatio.toFixed(2)}</p>
+              <p className="text-sm text-gray-400">K/D Ratio</p>
             </div>
           </div>
         </div>
         
-        <div className="mb-6">
-          <h4 className="font-semibold mb-3 text-gray-200">Top Agents</h4>
-          {topAgents.length > 0 ? (
-            <div className="space-y-2">
-              {topAgents.map((agent: ValorantAgentStat, index: number) => (
-                <div key={index} className="bg-black/30 p-3 rounded-md flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-white">{agent.agentName}</p>
-                    <p className="text-xs text-gray-300">{agent.matches} matches • {agent.winRate.toFixed(1)}% win rate</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium text-blue-400">{agent.kda.toFixed(2)}</p>
-                    <p className="text-xs text-gray-300">KDA</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400 text-center">No agent data available</p>
-          )}
-        </div>
-        
-        {agentChartData.length > 0 && (
-          <div className="mb-6">
-            <h4 className="font-semibold mb-3 text-gray-200">Agent Performance</h4>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={agentChartData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="name" stroke="#9ca3af" />
-                  <YAxis stroke="#9ca3af" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#111', color: '#fff', borderColor: '#333' }}
-                    cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
-                  />
-                  <Bar dataKey="winRate" name="Win Rate %" fill="#10b981" />
-                  <Bar dataKey="kda" name="KDA" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-        
-        <div className="mb-6">
-          <h4 className="font-semibold mb-3 text-gray-200">Performance Rating</h4>
-          <div className="h-64 w-full">
+        {/* Performance radar chart */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Performance</h3>
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceData}>
-                <PolarGrid stroke="#4b5563" />
-                <PolarAngleAxis dataKey="subject" stroke="#9ca3af" />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#9ca3af" />
-                <Radar
-                  name="Performance"
-                  dataKey="A"
-                  stroke="#ef4444"
-                  fill="#ef4444"
-                  fillOpacity={0.5}
-                />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', color: '#fff', borderColor: '#333' }}
-                />
+              <RadarChart outerRadius="80%" data={performanceData}>
+                <PolarGrid stroke="#444" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#ccc' }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#ccc' }} />
+                <Radar name="Player" dataKey="A" stroke="#9333ea" fill="#9333ea" fillOpacity={0.6} />
+                <Tooltip />
+                <Legend />
               </RadarChart>
             </ResponsiveContainer>
           </div>
         </div>
-        
-        <div>
-          <h4 className="font-semibold mb-3 text-gray-200">Recent Matches</h4>
-          {recentMatches.length > 0 ? (
-            <div className="space-y-2">
-              {recentMatches.map((match: ValorantMatch, index: number) => (
-                <div 
-                  key={index} 
-                  className={`p-3 rounded-md flex justify-between items-center ${match.won ? 'bg-green-900/30' : 'bg-red-900/30'}`}
-                >
-                  <div>
-                    <p className="font-medium text-white">{match.agent} • {match.mapId}</p>
-                    <p className="text-xs text-gray-300">K/D/A: {match.kills}/{match.deaths}/{match.assists}</p>
+
+        {/* Agent stats */}
+        {agentStats.length > 0 && (
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-white">Top Agents</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {agentStats.slice(0, 5).map((agent: ValorantAgentStat, index: number) => (
+                <div key={index} className="bg-gray-800/80 p-4 rounded-lg flex items-center">
+                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mr-4">
+                    <span className="text-2xl">{agent.agentName.charAt(0)}</span>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-white">{match.won ? 'WIN' : 'LOSS'}</p>
-                    <p className="text-xs text-gray-300">Score: {match.combatScore}</p>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="font-semibold text-white">{agent.agentName}</h4>
+                      <span className="text-sm text-green-400">{agent.winRate.toFixed(1)}% Win Rate</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400">{agent.matches} matches</span>
+                      <span className="text-blue-400">KDA: {agent.kda.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-400 text-center">No recent matches available</p>
-          )}
+          </div>
+        )}
+
+        {/* Recent matches */}
+        {recentMatches.length > 0 && (
+          <div>
+            <h3 className="text-xl font-bold mb-4 text-white">Recent Matches</h3>
+            <div className="space-y-3">
+              {recentMatches.slice(0, 5).map((match: ValorantMatch, index: number) => (
+                <div key={index} className={`bg-gray-800/80 p-4 rounded-lg border-l-4 ${match.won ? 'border-green-500' : 'border-red-500'}`}>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mr-3">
+                        <span>{match.agent.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-white">{match.agent}</h4>
+                        <p className="text-xs text-gray-400">{match.mapId}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-semibold ${match.won ? 'text-green-400' : 'text-red-400'}`}>
+                        {match.won ? 'Victory' : 'Defeat'}
+                      </p>
+                      <p className="text-xs text-gray-400">{match.kills}/{match.deaths}/{match.assists}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render Call of Duty stats
+  const renderCoDStats = () => {
+    // Check if we have the necessary data
+    if (!stat.data || stat.data.error) {
+      return (
+        <div className="text-center py-4">
+          <p className="text-red-400">{stat.data?.error || "No Call of Duty stats available"}</p>
+        </div>
+      );
+    }
+
+    // Basic stats for compact view
+    if (!expanded) {
+      return (
+        <div className="bg-gradient-to-br from-gray-900/20 to-gray-600/10 rounded-md p-4">
+          <div className="text-center mb-2">
+            <h3 className="text-xl font-bold text-white">{stat.data.username || "CoD Player"}</h3>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-green-400">{stat.data.kdRatio?.toFixed(2) || "0"}</p>
+              <p className="text-xs text-gray-300">K/D Ratio</p>
+            </div>
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-blue-400">{stat.data.matchesPlayed || 0}</p>
+              <p className="text-xs text-gray-300">Matches</p>
+            </div>
+            <div className="bg-black/30 p-2 rounded-md text-center">
+              <p className="text-lg font-bold text-yellow-400">{stat.data.kills || 0}</p>
+              <p className="text-xs text-gray-300">Kills</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Expanded view with detailed stats
+    return (
+      <div className="space-y-8">
+        {/* Header with player info */}
+        <div className="bg-gradient-to-br from-gray-900/20 to-gray-600/10 rounded-lg p-6 text-center">
+          <h2 className="text-3xl font-bold text-white mb-2">{stat.data.username || "CoD Player"}</h2>
+          <div className="flex justify-center space-x-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.kdRatio?.toFixed(2) || "0"}</p>
+              <p className="text-sm text-gray-300">K/D Ratio</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.matchesPlayed || 0}</p>
+              <p className="text-sm text-gray-300">Matches</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-400">{stat.data.kills || 0}</p>
+              <p className="text-sm text-gray-300">Kills</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Combat stats */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Combat Stats</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.kills || 0}</p>
+              <p className="text-sm text-gray-400">Kills</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-red-400">{stat.data.deaths || 0}</p>
+              <p className="text-sm text-gray-400">Deaths</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.kdRatio?.toFixed(2) || "0"}</p>
+              <p className="text-sm text-gray-400">K/D Ratio</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-yellow-400">{stat.data.headshots || 0}</p>
+              <p className="text-sm text-gray-400">Headshots</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Match stats */}
+        <div>
+          <h3 className="text-xl font-bold mb-4 text-white">Match Stats</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-white">{stat.data.matchesPlayed || 0}</p>
+              <p className="text-sm text-gray-400">Matches Played</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-green-400">{stat.data.killsPerMatch?.toFixed(1) || "0"}</p>
+              <p className="text-sm text-gray-400">Kills Per Match</p>
+            </div>
+            <div className="bg-gray-800/80 p-4 rounded-lg text-center">
+              <p className="text-2xl font-bold text-blue-400">{stat.data.damage?.toLocaleString() || 0}</p>
+              <p className="text-sm text-gray-400">Total Damage</p>
+            </div>
+          </div>
         </div>
       </div>
     );
-  }; // End of renderValorantStats
+  };
 
-  // Early return for no data case
-  if (!stat.data) {
+  // Render error state for any game stats
+  const renderErrorState = () => {
     return (
       <Card className="bg-gray-800 text-white p-6 rounded-lg shadow-lg relative">
         <CardContent>
@@ -1128,7 +1391,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
         </CardContent>
       </Card>
     );
-  }
+  };
 
   // Collapsed view (small card)
   if (!expanded) {
@@ -1283,46 +1546,57 @@ const StatCard = ({ stat }: { stat: StatData }) => {
   }
 
   // If we're not showing expanded or compact card yet, return the expanded view
-  // This is the final return statement for the component
   return (
     <>
       {expanded ? (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gray-800 text-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-        {/* Header with close button */}
-        <div className="sticky top-0 bg-gray-900 p-6 flex justify-between items-center border-b border-gray-700">
-          <h2 className="text-3xl font-bold">{stat.game} Stats</h2>
-          <div className="flex items-center space-x-2">
-            <Button 
-              onClick={() => setShowCompareModal(true)}
-              variant="outline"
-              size="sm"
-            >
-              Compare Stats
-            </Button>
-            <button 
-              onClick={toggleExpanded}
-              className="bg-gray-700 hover:bg-gray-600 text-white rounded-full w-10 h-10 flex items-center justify-center"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4 overflow-auto">
+          <div className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-full overflow-auto">
+            {/* Header with close button */}
+            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+              <h2 className="text-3xl font-bold">{stat.game} Stats</h2>
+              <div className="flex items-center space-x-2">
+                <Button 
+                  onClick={() => setShowCompareModal(true)}
+                  variant="outline"
+                  size="sm"
+                >
+                  Compare Stats
+                </Button>
+                <button 
+                  onClick={toggleExpanded}
+                  className="bg-gray-700 hover:bg-gray-600 text-white rounded-full w-10 h-10 flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
 
-        <div className="p-6">
-          {renderGameStats()}
-        </div>
-        
-        {/* Delete button */}
-        {stat.ID && stat.onDelete && (
-          <button 
-            onClick={handleDelete}
-            className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
-            title="Delete stat card"
-          >
-            ✕
-          </button>
-        )}
+            <div className="p-6">
+              {renderGameStats()}
+            </div>
+            
+            {/* Action buttons */}
+            <div className="absolute top-2 right-16 flex space-x-2">
+              {stat.ID && stat.onRefresh && (
+                <button 
+                  onClick={handleRefresh}
+                  className={`bg-blue-500 hover:bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center ${stat.isLoading ? 'animate-spin' : ''}`}
+                  title="Refresh stat card"
+                  disabled={stat.isLoading}
+                >
+                  ↻
+                </button>
+              )}
+              {stat.ID && stat.onDelete && (
+                <button 
+                  onClick={handleDelete}
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                  title="Delete stat card"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ) : (
@@ -1355,16 +1629,28 @@ const StatCard = ({ stat }: { stat: StatData }) => {
               </Button>
             </div>
             
-            {/* Delete button */}
-            {stat.ID && stat.onDelete && (
-              <button 
-                onClick={handleDelete}
-                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
-                title="Delete stat card"
-              >
-                ✕
-              </button>
-            )}
+            {/* Action buttons */}
+            <div className="absolute top-2 right-2 flex space-x-2">
+              {stat.ID && stat.onRefresh && (
+                <button 
+                  onClick={handleRefresh}
+                  className={`bg-blue-500 hover:bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center ${stat.isLoading ? 'animate-spin' : ''}`}
+                  title="Refresh stat card"
+                  disabled={stat.isLoading}
+                >
+                  ↻
+                </button>
+              )}
+              {stat.ID && stat.onDelete && (
+                <button 
+                  onClick={handleDelete}
+                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                  title="Delete stat card"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

@@ -26,6 +26,10 @@ const useStats = () => {
     steam_id?: string;
     ea_username?: string;
     riot_id?: string;
+    // Add the newer Riot fields from the backend User model
+    riot_game_name?: string;
+    riot_tagline?: string;
+    riot_puuid?: string;
     xbox_id?: string;
     playstation_id?: string;
   } | null>(null);
@@ -65,7 +69,25 @@ const useStats = () => {
         withCredentials: true,
       });
       console.log("User profile fetched:", response.data);
-      setProfile(response.data);
+      
+      // Enhanced logging for profile data
+      if (response.data) {
+        console.log("Profile account IDs:", {
+          riot_id: response.data.riot_id,
+          steam_id: response.data.steam_id,
+          ea_username: response.data.ea_username
+        });
+      }
+      
+      // Ensure null fields are converted to undefined for cleaner conditionals
+      const cleanedProfile = Object.fromEntries(
+        Object.entries(response.data || {}).map(([key, value]) => 
+          [key, value === null ? undefined : value]
+        )
+      );
+      
+      console.log("Cleaned profile:", cleanedProfile);
+      setProfile(cleanedProfile);
     } catch (error) {
       console.error("❌ Error fetching profile:", error);
     }
@@ -78,6 +100,18 @@ const useStats = () => {
     }
   
     console.log("Starting fetchUpdatedStats with stats:", stats);
+    console.log("Current profile:", profile);
+    // Print key debugging info about the profile
+    console.log("Profile riot_id available:", !!profile.riot_id);
+    console.log("Profile steam_id available:", !!profile.steam_id);
+    console.log("Profile platform IDs:", {
+      riot_id: profile.riot_id,
+      steam_id: profile.steam_id,
+      ea_username: profile.ea_username,
+      xbox_id: profile.xbox_id,
+      playstation_id: profile.playstation_id
+    });
+    
     // Use the current stats from state parameter instead of the stats variable
     // to avoid closure issues and prevent infinite loops
     setStats(currentStats => {
@@ -88,6 +122,10 @@ const useStats = () => {
       }
       
       console.log("Updating stats for:", currentStats);
+      // Log each stat card type for debugging
+      currentStats.forEach(stat => {
+        console.log(`Stat card: game=${stat.game}, platform=${stat.platform}, hasData=${!!stat.data}`);
+      });
       // Start the async update process
       Promise.all(
         currentStats.map(async (stat) => {
@@ -122,37 +160,97 @@ const useStats = () => {
                 return { ...stat, data: { error: "No data available" } };
               }
             }
-            else if ((stat.game === "Valorant" || stat.game === "League of Legends") && profile.riot_id) {
-              console.log(`Fetching ${stat.game} stats for Riot ID: ${profile.riot_id}`);
-              
-              // Convert game name to endpoint
-              const gameEndpoint = stat.game === "League of Legends" ? "lol" : "valorant";
-              // Note: Backend uses 'lol' instead of 'league' for the League of Legends endpoint
-              
+            else if (stat.game === "Dota 2" && profile.steam_id) {
+              console.log(`Fetching Dota 2 stats with steam_id: ${profile.steam_id}`);
               const response = await axios.get(
-                `${process.env.REACT_APP_API_URL}/api/stats/${gameEndpoint}`,
-                { params: { riot_id: profile.riot_id } }
+                `${process.env.REACT_APP_API_URL}/api/stats/dota2`,
+                { params: { steam_id: profile.steam_id } }
               );
               console.log(`Stats for ${stat.game} fetched:`, response.data);
               
-              // Process based on game type with enhanced logging
-              console.log(`Raw ${stat.game} API response:`, response);
-              
+              // Process Dota 2 stats
               if (response.data) {
-                if (stat.game === "Valorant") {
-                  return { ...stat, data: processValorantStats(response.data) };
-                } else {
-                  // Enhanced logging for League data
-                  console.log("League response status:", response.status);
-                  console.log("League response headers:", response.headers);
-                  
-                  const processedData = processLeagueStats(response.data);
-                  console.log("Processed League data:", processedData);
-                  return { ...stat, data: processedData };
-                }
+                return { ...stat, data: processDota2Stats(response.data) };
               } else {
                 console.error(`No data in response for ${stat.game}`);
                 return { ...stat, data: { error: "No data available" } };
+              }
+            }
+            else if (stat.game === "League of Legends") {
+              // Check if ANY Riot fields are available
+              const hasRiotId = !!profile?.riot_id;
+              const hasRiotGameName = !!profile?.riot_game_name;
+              const hasRiotTagline = !!profile?.riot_tagline;
+              const hasRiotPuuid = !!profile?.riot_puuid;
+              
+              console.log(`League of Legends API call - Riot fields available:`, {
+                hasRiotId,
+                hasRiotGameName,
+                hasRiotTagline,
+                hasRiotPuuid
+              });
+              
+              if (!hasRiotId && !hasRiotGameName && !hasRiotTagline && !hasRiotPuuid) {
+                console.error("Cannot fetch League of Legends stats - no Riot account information available");
+                return { ...stat, data: { error: "Riot account required" } };
+              }
+              
+              // Build request parameters using all available Riot fields
+              const params: Record<string, string> = {};
+              
+              if (profile?.riot_id) {
+                params.riot_id = profile.riot_id;
+              }
+              if (profile?.riot_game_name) {
+                params.riot_game_name = profile.riot_game_name;
+              }
+              if (profile?.riot_tagline) {
+                params.riot_tagline = profile.riot_tagline;
+              }
+              if (profile?.riot_puuid) {
+                params.riot_puuid = profile.riot_puuid;
+              }
+              
+              console.log(`Fetching League of Legends stats with params:`, params);
+              
+              try {
+                const response = await axios.get(
+                  `${process.env.REACT_APP_API_URL}/api/stats/lol`,
+                  { params }
+                );
+                console.log(`Stats for ${stat.game} fetched:`, response.data);
+                return { ...stat, data: response.data };
+              } catch (error) {
+                console.error(`Error fetching League of Legends stats:`, error);
+                return { 
+                  ...stat, 
+                  data: { 
+                    error: "Failed to load League of Legends stats", 
+                    details: error instanceof Error ? error.message : String(error)
+                  } 
+                };
+              }
+            }
+            else if (stat.game === "Valorant" && profile.riot_id) {
+              console.log(`Fetching Valorant stats for Riot ID: ${profile.riot_id}`);
+              
+              try {
+                const response = await axios.get(
+                  `${process.env.REACT_APP_API_URL}/api/stats/valorant`,
+                  { params: { riot_id: profile.riot_id } }
+                );
+                console.log(`Valorant stats fetched:`, response.data);
+                
+                if (response.data) {
+                  return { ...stat, data: processValorantStats(response.data) };
+                } else {
+                  console.error("No data in Valorant response");
+                  return { ...stat, data: { error: "No Valorant data available" } };
+                }
+              } catch (error) {
+                console.error("Error fetching Valorant stats:", error);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                return { ...stat, data: { error: `Valorant API error: ${errorMessage}` } };
               }
             }
             else if (stat.game === "Call of Duty") {
@@ -209,6 +307,66 @@ const useStats = () => {
     });
   }, [profile]); // Only depend on profile, not stats
   
+  // Process Dota 2 stats from the backend API
+  const processDota2Stats = (data: any) => {
+    if (!data) {
+      return { error: "No data available" };
+    }
+    
+    const result: any = {
+      playerName: data.profile?.personaname || "Unknown Player",
+      avatar: data.profile?.avatarfull || "",
+      steamId: data.profile?.steamid || ""
+    };
+    
+    // Process overall stats
+    if (data.stats) {
+      result.matches_played = data.stats.matches_played || 0;
+      result.wins = data.stats.wins || 0;
+      result.losses = data.stats.losses || 0;
+      result.win_rate = data.stats.win_rate || 0;
+      result.kills = data.stats.kills || 0;
+      result.deaths = data.stats.deaths || 0;
+      result.assists = data.stats.assists || 0;
+      result.kda = data.stats.kda || 0;
+      result.gpm = data.stats.gpm || 0; // Gold per minute
+      result.xpm = data.stats.xpm || 0; // Experience per minute
+    }
+    
+    // Process hero stats
+    if (data.heroes && data.heroes.length > 0) {
+      result.heroes = data.heroes.map((hero: any) => ({
+        name: hero.name || "Unknown Hero",
+        matches_played: hero.matches_played || 0,
+        wins: hero.wins || 0,
+        losses: hero.losses || 0,
+        win_rate: hero.win_rate || 0,
+        kills: hero.kills || 0,
+        deaths: hero.deaths || 0,
+        assists: hero.assists || 0,
+        kda: hero.kda || 0
+      }));
+    }
+    
+    // Process recent matches
+    if (data.recent_matches && data.recent_matches.length > 0) {
+      result.recent_matches = data.recent_matches.map((match: any) => ({
+        match_id: match.match_id || 0,
+        hero_name: match.hero_name || "Unknown Hero",
+        result: match.win ? "Win" : "Loss",
+        duration: match.duration || 0,
+        kills: match.kills || 0,
+        deaths: match.deaths || 0,
+        assists: match.assists || 0,
+        gpm: match.gpm || 0,
+        xpm: match.xpm || 0,
+        date: match.start_time || ""
+      }));
+    }
+    
+    return result;
+  };
+
   // Process Apex Legends stats from tracker.gg API
   const processApexStats = (data: any) => {
     const result: any = {};
@@ -533,8 +691,24 @@ const useStats = () => {
     }
     
     // Check if required accounts are linked based on game and platform
-    if (game === "CS2" && !profile.steam_id) {
-      throw new Error("❌ Steam account must be linked before saving CS2 stats.");
+    if ((game === "CS2" || game === "Dota 2") && !profile.steam_id) {
+      throw new Error(`❌ Steam account must be linked before saving ${game} stats.`);
+    }
+    
+    // For League of Legends, completely bypass the Riot ID check
+    if (game === "League of Legends") {
+      console.log("BYPASS: Skipping Riot ID validation for League of Legends");
+      // Deliberately NOT checking profile.riot_id for League of Legends
+    }
+    // Normal check for other Riot games
+    else if (game === "Valorant") {
+      console.log(`Checking Riot ID for Valorant:`, profile.riot_id);
+      
+      if (!profile.riot_id) {
+        throw new Error(`❌ Riot account must be linked before saving Valorant stats.`);
+      } else {
+        console.log(`✅ Riot ID validation passed: ${profile.riot_id}`);
+      }
     }
     
     if (game === "Apex Legends") {
@@ -550,8 +724,51 @@ const useStats = () => {
       }
     }
     
-    if ((game === "Valorant" || game === "League of Legends") && !profile.riot_id) {
-      throw new Error(`❌ Riot account must be linked before saving ${game} stats.`);
+    
+    // Validation logic for Riot games
+    if (game === "Valorant" || game === "League of Legends") {
+      // For both Riot games, we need to check for ALL possible Riot account fields
+      // as the backend now uses the newer fields (riot_game_name, riot_tagline, riot_puuid)
+      // but may still have the older riot_id field
+      
+      // Log all Riot fields for debugging
+      console.log(`Checking ALL Riot fields for ${game}:`, {
+        // The older field
+        "riot_id": profile.riot_id,
+        
+        // Check if newer fields exist in the profile object
+        "has_game_name": Object.prototype.hasOwnProperty.call(profile, 'riot_game_name'),
+        "has_tagline": Object.prototype.hasOwnProperty.call(profile, 'riot_tagline'),
+        "has_puuid": Object.prototype.hasOwnProperty.call(profile, 'riot_puuid'),
+        
+        // And their values if they exist
+        "game_name_value": profile.riot_game_name,
+        "tagline_value": profile.riot_tagline, 
+        "puuid_value": profile.riot_puuid
+      });
+      
+      // Check if ANY of the Riot fields exist and have values
+      const hasRiotId = !!profile.riot_id;
+      const hasRiotGameName = Object.prototype.hasOwnProperty.call(profile, 'riot_game_name') && !!profile.riot_game_name;
+      const hasRiotTagline = Object.prototype.hasOwnProperty.call(profile, 'riot_tagline') && !!profile.riot_tagline;
+      const hasRiotPuuid = Object.prototype.hasOwnProperty.call(profile, 'riot_puuid') && !!profile.riot_puuid;
+      
+      const hasAnyRiotField = hasRiotId || hasRiotGameName || hasRiotTagline || hasRiotPuuid;
+      
+      console.log(`Riot field detection results for ${game}:`, {
+        hasRiotId,
+        hasRiotGameName,
+        hasRiotTagline,
+        hasRiotPuuid,
+        hasAnyRiotField
+      });
+      
+      if (!hasAnyRiotField) {
+        console.error(`No Riot account fields found for ${game}`);
+        throw new Error(`\u274c Riot account must be linked before saving ${game} stats.`);
+      } else {
+        console.log(`\u2705 Riot account validation passed for ${game}`);
+      }
     }
     
     if (game === "Call of Duty") {

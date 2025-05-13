@@ -5,7 +5,13 @@ import StatCard from "./StatCard";
 import AddStatModal from "./AddStatModal";
 
 const Statistics = () => {
-  const { stats, profile, saveStatSelection, deleteStatCard } = useStats();
+  const { stats, profile, saveStatSelection, deleteStatCard, fetchUpdatedStats } = useStats();
+  
+  // Define a refreshStat function that calls fetchUpdatedStats
+  const refreshStat = async (id: number) => {
+    console.log(`Refreshing stat with ID: ${id}`);
+    await fetchUpdatedStats();
+  };
   const [showModal, setShowModal] = useState(false);
 
   // Add debugging logs
@@ -15,11 +21,25 @@ const Statistics = () => {
   }, [stats, profile]);
 
   const handleAddStat = async (game: string, platform: string) => {
-    // Check for the required account based on platform
-    if (platform === "Steam" && !profile?.steam_id) {
+    // DEBUGGING for League of Legends issue
+    console.log("=== League of Legends Debugging ===");
+    console.log("Adding game:", game, "platform:", platform);
+    console.log("Profile.riot_id:", profile?.riot_id);
+    console.log("Profile Riot ID type:", typeof profile?.riot_id);
+    console.log("Checking if Riot ID exists:", !!profile?.riot_id);
+    console.log("Profile keys:", profile ? Object.keys(profile) : "no profile");
+    console.log("Full profile:", profile);
+    
+    // IMPORTANT: For League of Legends, bypass the frontend validation entirely
+    if (game === "League of Legends") {
+      console.log("Bypassing frontend Riot ID check for League of Legends");
+      // Continue without checking profile.riot_id
+    }
+    // Check for the required account based on platform for other games
+    else if (platform === "Steam" && !profile?.steam_id) {
       alert("You must link your Steam account before adding stats.");
       return;
-    } else if (platform === "Riot" && !profile?.riot_id) {
+    } else if (platform === "Riot" && !profile?.riot_id && game !== "League of Legends") {
       alert("You must link your Riot account before adding stats.");
       return;
     } else if (platform === "EA" && !profile?.ea_username) {
@@ -62,7 +82,8 @@ const Statistics = () => {
             key={`${stat.game}-${stat.platform}-${index}`} 
             stat={{
               ...stat, 
-              onDelete: stat.ID ? handleDeleteCard : undefined
+              onDelete: stat.ID ? handleDeleteCard : undefined,
+              onRefresh: stat.ID ? refreshStat : undefined
             }} 
           />
         ))}

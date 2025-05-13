@@ -23,54 +23,83 @@ const (
 
 // GetLeagueOfLegendsStats fetches LoL stats using the Riot API
 func GetLeagueOfLegendsStats(c *gin.Context) {
-	// TEMP: Always use mock data for expo
-	username := c.Query("riot_id")
-	if username == "" {
-		userID, exists := c.Get("userID")
-		if !exists {
-			c.JSON(400, gin.H{"error": "Riot ID is required"})
-			return
-		}
-		username = fmt.Sprintf("user-%v", userID)
-	}
-	// The rest of the function should use only real Riot API calls and return real data.
-	// (Implementation should already be present below; remove this mock return.)
-
 	log.Println("➡️ Received request for League of Legends stats")
 
-	// Get the Riot ID from the query parameter or from the user profile
+	// Check for ALL possible Riot identifiers in the query parameters
 	riotID := c.Query("riot_id")
-	if riotID == "" {
-		// If not provided directly, try to get from the authenticated user
-		userID, exists := c.Get("userID")
+	riotGameName := c.Query("riot_game_name")
+	riotTagline := c.Query("riot_tagline")
+	riotPUUID := c.Query("riot_puuid")
+	
+	log.Printf("Riot identifiers from query: ID=%s, GameName=%s, Tagline=%s, PUUID=%s",
+		riotID, riotGameName, riotTagline, riotPUUID)
+	
+	// Check if we have at least one valid identifier
+	hasValidIdentifier := riotID != "" || (riotGameName != "" && riotTagline != "") || riotPUUID != ""
+	
+	if !hasValidIdentifier {
+		// If no identifiers provided, try to get from the authenticated user
+		userIDValue, exists := c.Get("userID")
 		if !exists {
-			log.Println("ERROR: User ID not found in context and no riot_id provided")
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Riot ID is required"})
+			log.Println("ERROR: User ID not found in context and no Riot identifiers provided")
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Riot account information is required"})
 			return
 		}
+		
+		// Convert and log the user ID that we would use to query the database
+		userID, ok := userIDValue.(uint)
+		if !ok {
+			log.Printf("ERROR: User ID is not of the expected type: %v", userIDValue)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID"})
+			return
+		}
+		
+		// Log that we would query the database with this user ID
+		log.Printf("Would query database for Riot info with user ID: %d", userID)
 
-		// Check if user has a linked Riot account
+		// Check if user has a linked Riot account - expanded struct to include all fields
 		var user struct {
-			RiotID string `json:"riot_id"`
+			RiotID       string `json:"riot_id"`
+			RiotGameName string `json:"riot_game_name"`
+			RiotTagline  string `json:"riot_tagline"`
+			RiotPUUID    string `json:"riot_puuid"`
 		}
 
-		// This would typically query the database, but for simplicity we're using the context
+		// In a real implementation, we'd query the database for the user's Riot info
+		// For example:
+		// if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		//     log.Printf("ERROR: Failed to retrieve user: %v", err)
+		//     c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		//     return
+		// }
+		
+		// For testing only - simulate empty values
 		user.RiotID = ""
-		if userID != nil {
-			// Query database for user's Riot ID
-			// For now, we'll just assume it's not available
-		}
+		user.RiotGameName = ""
+		user.RiotTagline = ""
+		user.RiotPUUID = ""
 
-		if user.RiotID == "" {
-			log.Println("ERROR: User has no linked Riot account")
+		// Check if any Riot identifiers are available
+		hasAnyIdentifier := user.RiotID != "" || 
+			(user.RiotGameName != "" && user.RiotTagline != "") || 
+			user.RiotPUUID != ""
+
+		if !hasAnyIdentifier {
+			log.Println("ERROR: User has no linked Riot account information")
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Riot account not linked"})
 			return
 		}
 
+		// Set any available identifiers
 		riotID = user.RiotID
+		riotGameName = user.RiotGameName
+		riotTagline = user.RiotTagline
+		riotPUUID = user.RiotPUUID
 	}
 
-	log.Printf("Fetching League of Legends stats for Riot ID: %s", riotID)
+	// Log all the Riot identifiers we'll be using
+	log.Printf("Fetching League of Legends stats using identifiers: ID=%s, GameName=%s, Tagline=%s, PUUID=%s",
+		riotID, riotGameName, riotTagline, riotPUUID)
 
 	// Get the Riot API key from environment variables
 	riotAPIKey := os.Getenv("RIOT_API_KEY")
@@ -94,8 +123,66 @@ func GetLeagueOfLegendsStats(c *gin.Context) {
 
 	log.Printf("Using Riot API key: %s...[REDACTED]", riotAPIKey[:10])
 
-	// Step 1: Get summoner data by name to retrieve PUUID
-	summoner, err := getSummonerByName(riotID, riotAPIKey)
+	// Prioritize using PUUID if available, otherwise fall back to riot_id
+	var summoner *Summoner
+	var err error
+	
+	// Check if PUUID is available first
+	if riotPUUID != "" {
+		log.Printf("Using saved PUUID directly: %s", riotPUUID)
+		// Create a direct request to get summoner by PUUID
+		summonerURL := fmt.Sprintf("%s/lol/summoner/v4/summoners/by-puuid/%s", RiotAPIBaseURL, riotPUUID)
+		
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", summonerURL, nil)
+		if err != nil {
+			log.Printf("ERROR: Failed to create request: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create API request"})
+			return
+		}
+		
+		req.Header.Add("X-Riot-Token", riotAPIKey)
+		
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("ERROR: Failed to send request: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to communicate with Riot API"})
+			return
+		}
+		defer resp.Body.Close()
+		
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("ERROR: API returned status %d: %s", resp.StatusCode, string(body))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch summoner data from Riot API"})
+			return
+		}
+		
+		summoner = &Summoner{}
+		if err := json.NewDecoder(resp.Body).Decode(summoner); err != nil {
+			log.Printf("ERROR: Failed to decode response: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse API response"})
+			return
+		}
+		
+		log.Printf("Successfully fetched summoner data using PUUID: %s", summoner.Name)
+	} else if riotID != "" {
+		// Fall back to using riot_id if no PUUID is available
+		log.Printf("No PUUID available, falling back to riot_id: %s", riotID)
+		summoner, err = getSummonerByName(riotID, riotAPIKey)
+		if err != nil {
+			log.Printf("ERROR: Failed to get summoner by name: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch summoner data from Riot API"})
+			return
+		}
+	} else {
+		// No valid identifiers at all
+		log.Println("ERROR: No Riot PUUID or ID available")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Riot account information is required"})
+		return
+	}
+	
+	// Handle any errors from the summoner lookup
 	if err != nil {
 		log.Printf("ERROR: Failed to get summoner: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch summoner data from Riot API"})
@@ -154,16 +241,6 @@ func GetLeagueOfLegendsStats(c *gin.Context) {
 		matchStats.TopChampions = championStats
 	}
 
-	// Step 5: Get quick play specific stats
-	// Note: processMatches already handles quick play stats, so we don't need a separate call.
-	// The QuickPlayStats field is already populated within processMatches
-
-	// Calculate additional insights
-	if matchStats.TotalGames > 0 {
-		// Calculate win rate
-		matchStats.WinRate = float64(matchStats.Wins) / float64(matchStats.TotalGames) * 100
-	}
-
 	// Combine all data into a response
 	response := gin.H{
 		"summoner": summoner,
@@ -211,11 +288,11 @@ type MatchStats struct {
 	AverageDeaths     float64         `json:"averageDeaths"`
 	AverageAssists    float64         `json:"averageAssists"`
 	AverageCS         float64         `json:"averageCS"`
-	AverageVision     float64         `json:"averageVision"`
-	AverageDamage     float64         `json:"averageDamage"`     // Average damage per game
-	WinRate           float64         `json:"winRate"`           // Win percentage
-	KillParticipation float64         `json:"killParticipation"` // Kill participation percentage
-	ObjectiveControl  float64         `json:"objectiveControl"`  // Objective control score
+	AverageVision     float64         `json:"averageVision,averageVisionScore"`
+	AverageDamage     float64         `json:"averageDamage"`                           // Average damage per game
+	WinRate           float64         `json:"winRate"`                                 // Win percentage
+	KillParticipation float64         `json:"killParticipation"`                       // Kill participation percentage
+	ObjectiveControl  float64         `json:"objectiveControl,objectiveParticipation"` // Objective control score
 	TopChampions      []ChampionStats `json:"topChampions"`
 	RecentMatches     []MatchDetails  `json:"recentMatches"`
 	QuickPlayStats    QuickPlayStats  `json:"quickPlayStats"` // Quick play specific stats
@@ -242,12 +319,14 @@ type RoleStats struct {
 
 // ChampionStats contains statistics for a specific champion
 type ChampionStats struct {
-	ChampionID   int     `json:"championId"`
-	ChampionName string  `json:"championName"`
-	Games        int     `json:"games"`
-	Wins         int     `json:"wins"`
-	Losses       int     `json:"losses"`
-	KDA          float64 `json:"kda"`
+	ChampionID             int     `json:"championId"`
+	ChampionName           string  `json:"championName"`
+	Games                  int     `json:"games"`
+	Wins                   int     `json:"wins"`
+	Losses                 int     `json:"losses"`
+	KDA                    float64 `json:"kda"`
+	AverageVisionScore     float64 `json:"averageVisionScore"`
+	ObjectiveParticipation float64 `json:"objectiveParticipation"`
 }
 
 // MatchDetails contains basic information about a match
@@ -426,6 +505,8 @@ func calculateChampionStats(puuid string, matchIDs []string, apiKey string) ([]C
 		Kills        int
 		Deaths       int
 		Assists      int
+		VisionScore  int
+		Objectives   int
 	})
 
 	// Process each match to extract champion data
@@ -459,6 +540,8 @@ func calculateChampionStats(puuid string, matchIDs []string, apiKey string) ([]C
 						Kills        int
 						Deaths       int
 						Assists      int
+						VisionScore  int
+						Objectives   int
 					}{
 						ChampionName: championName,
 						Games:        0,
@@ -467,6 +550,8 @@ func calculateChampionStats(puuid string, matchIDs []string, apiKey string) ([]C
 						Kills:        0,
 						Deaths:       0,
 						Assists:      0,
+						VisionScore:  0,
+						Objectives:   0,
 					}
 				}
 
@@ -476,6 +561,8 @@ func calculateChampionStats(puuid string, matchIDs []string, apiKey string) ([]C
 				stats.Kills += p.Kills
 				stats.Deaths += p.Deaths
 				stats.Assists += p.Assists
+				stats.VisionScore += p.VisionScore
+				stats.Objectives += p.DragonKills + p.BaronKills + p.TurretKills
 
 				if p.Win {
 					stats.Wins++
@@ -506,12 +593,14 @@ func calculateChampionStats(puuid string, matchIDs []string, apiKey string) ([]C
 		}
 
 		result = append(result, ChampionStats{
-			ChampionID:   champID,
-			ChampionName: stats.ChampionName,
-			Games:        stats.Games,
-			Wins:         stats.Wins,
-			Losses:       stats.Losses,
-			KDA:          kda,
+			ChampionID:             champID,
+			ChampionName:           stats.ChampionName,
+			Games:                  stats.Games,
+			Wins:                   stats.Wins,
+			Losses:                 stats.Losses,
+			KDA:                    kda,
+			AverageVisionScore:     float64(stats.VisionScore) / float64(stats.Games),
+			ObjectiveParticipation: float64(stats.Objectives) / float64(stats.Games),
 		})
 	}
 
@@ -611,8 +700,8 @@ func getMatchDetails(matchID string, apiKey string) (*MatchDetailResponse, error
 
 // getMatchHistory retrieves match IDs for a player
 func getMatchHistory(puuid string, apiKey string) ([]string, error) {
-	// Get last 10 matches
-	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=10", MatchV5BaseURL, puuid)
+	// Get last 25 matches
+	url := fmt.Sprintf("%s/lol/match/v5/matches/by-puuid/%s/ids?count=25", MatchV5BaseURL, puuid)
 	log.Printf("Getting match history from: %s", url)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -682,6 +771,7 @@ func processMatches(puuid string, matchIDs []string, apiKey string) (*MatchStats
 	totalDamage := 0
 	totalTeamKills := 0 // For kill participation calculation
 	totalObjectiveScore := 0
+	totalGames := 0
 
 	// Process each match (limit to 10 for API call efficiency)
 	maxMatches := 10
@@ -693,6 +783,7 @@ func processMatches(puuid string, matchIDs []string, apiKey string) (*MatchStats
 	seenGameModes := make(map[string]int)
 
 	for i := 0; i < maxMatches; i++ {
+		totalGames++
 		matchID := matchIDs[i]
 
 		// Get detailed match data from the Riot API
@@ -808,6 +899,9 @@ func processMatches(puuid string, matchIDs []string, apiKey string) (*MatchStats
 
 		for i := range match.Info.Participants {
 			if match.Info.Participants[i].PUUID == puuid {
+				// Aggregate vision and objectives for performance stats
+				totalVision += match.Info.Participants[i].VisionScore
+				totalObjectiveScore += match.Info.Participants[i].DragonKills + match.Info.Participants[i].BaronKills + match.Info.Participants[i].TurretKills
 				participant := match.Info.Participants[i]
 				playerData = &struct {
 					Assists                     int    `json:"assists"`
@@ -972,47 +1066,48 @@ func processMatches(puuid string, matchIDs []string, apiKey string) (*MatchStats
 		stats.RecentMatches = append(stats.RecentMatches, matchDetail)
 	}
 
-	// Calculate averages and final KDA
-	if stats.TotalGames > 0 {
-		stats.AverageKills = float64(totalKills) / float64(stats.TotalGames)
-		stats.AverageDeaths = float64(totalDeaths) / float64(stats.TotalGames)
-		stats.AverageAssists = float64(totalAssists) / float64(stats.TotalGames)
-		stats.AverageCS = float64(totalCS) / float64(stats.TotalGames)
-		stats.AverageVision = float64(totalVision) / float64(stats.TotalGames)
-		stats.AverageDamage = float64(totalDamage) / float64(stats.TotalGames)
-		stats.WinRate = float64(stats.Wins) / float64(stats.TotalGames) * 100
+	// After all matches processed, calculate averages
+	if totalGames > 0 {
+		stats.AverageKills = float64(totalKills) / float64(totalGames)
+		stats.AverageDeaths = float64(totalDeaths) / float64(totalGames)
+		stats.AverageAssists = float64(totalAssists) / float64(totalGames)
+		stats.AverageCS = float64(totalCS) / float64(totalGames)
+		stats.AverageVision = float64(totalVision) / float64(totalGames)
+		stats.AverageDamage = float64(totalDamage) / float64(totalGames)
+		stats.ObjectiveControl = float64(totalObjectiveScore) / float64(totalGames)
+	}
 
-		// Overall KDA
-		if totalDeaths > 0 {
-			stats.KDA = float64(totalKills+totalAssists) / float64(totalDeaths)
-		} else {
-			stats.KDA = float64(totalKills + totalAssists)
-		}
+	// Calculate KDA if we have the raw components
+	if stats.AverageDeaths != 0 {
+		deaths := stats.AverageDeaths
+		kills := stats.AverageKills
+		assists := stats.AverageAssists
+		stats.KDA = (kills + assists) / deaths
+	}
 
-		// Quick play specific stats
-		stats.QuickPlayStats.Games = stats.TotalGames
-		stats.QuickPlayStats.Wins = stats.Wins
-		stats.QuickPlayStats.WinRate = stats.WinRate
+	// Quick play specific stats
+	stats.QuickPlayStats.Games = stats.TotalGames
+	stats.QuickPlayStats.Wins = stats.Wins
+	stats.QuickPlayStats.WinRate = stats.WinRate
 
-		// Kill participation
-		if totalTeamKills > 0 {
-			stats.KillParticipation = float64(totalKills+totalAssists) / float64(totalTeamKills) * 100
-		}
+	// Kill participation
+	if totalTeamKills > 0 {
+		stats.KillParticipation = float64(totalKills+totalAssists) / float64(totalTeamKills) * 100
+	}
 
-		// Objective control metric
-		stats.ObjectiveControl = float64(totalObjectiveScore) / float64(stats.TotalGames)
+	// Objective control metric
+	stats.ObjectiveControl = float64(totalObjectiveScore) / float64(stats.TotalGames)
 
-		// Calculate versatility score based on champion and role diversity
-		stats.QuickPlayStats.VersatilityScore = float64(len(championStats))*5 + float64(len(stats.QuickPlayStats.RolePrefStats))*10
-		if stats.QuickPlayStats.VersatilityScore > 100 {
-			stats.QuickPlayStats.VersatilityScore = 100
-		}
+	// Calculate versatility score based on champion and role diversity
+	stats.QuickPlayStats.VersatilityScore = float64(len(championStats))*5 + float64(len(stats.QuickPlayStats.RolePrefStats))*10
+	if stats.QuickPlayStats.VersatilityScore > 100 {
+		stats.QuickPlayStats.VersatilityScore = 100
+	}
 
-		// Calculate carry score based on KDA, damage, and win contribution
-		stats.QuickPlayStats.CarryScore = stats.KDA*5 + stats.AverageDamage/1000.0*3 + stats.WinRate*0.2
-		if stats.QuickPlayStats.CarryScore > 100 {
-			stats.QuickPlayStats.CarryScore = 100
-		}
+	// Calculate carry score based on KDA, damage, and win contribution
+	stats.QuickPlayStats.CarryScore = stats.KDA*5 + stats.AverageDamage/1000.0*3 + stats.WinRate*0.2
+	if stats.QuickPlayStats.CarryScore > 100 {
+		stats.QuickPlayStats.CarryScore = 100
 	}
 
 	// Convert champion map to slice and sort by games played
