@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import useStats from "./useStats";
+// Using our new component instead of the original StatCard
 import StatCard from "./StatCard";
 import AddStatModal from "./AddStatModal";
 
@@ -73,24 +74,48 @@ const Statistics = () => {
   };
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-900 text-white p-6">
-      <h2 className="text-3xl font-bold mb-6">Player Statistics</h2>
+    <div className="flex flex-col items-center min-h-screen text-white p-6 pt-24">
+      <div className="w-full max-w-6xl">
+        <div className="flex justify-between items-center mb-8 pb-4 border-b border-primary-800">
+          <div>
+            <h2 className="text-3xl font-bold text-white">Your Statistics</h2>
+            <p className="text-primary-400 mt-1">Track your performance across all games</p>
+          </div>
+          <Button 
+            className="bg-accent-600 hover:bg-accent-700 text-white border-none px-4 py-2 flex items-center gap-2" 
+            onClick={() => setShowModal(true)}
+          >
+            <span className="text-xl">+</span>
+            <span>Add Game</span>
+          </Button>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-        {stats.map((stat, index) => (
-          <StatCard 
-            key={`${stat.game}-${stat.platform}-${index}`} 
-            stat={{
-              ...stat, 
-              onDelete: stat.ID ? handleDeleteCard : undefined,
-              onRefresh: stat.ID ? refreshStat : undefined
-            }} 
-          />
-        ))}
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-16 h-16 flex items-center justify-center text-3xl"
-          onClick={() => setShowModal(true)}>
-          +
-        </Button>
+        {stats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-6 bg-primary-950/50 border border-primary-800 rounded">
+            <div className="text-6xl mb-4 text-primary-600">📊</div>
+            <h3 className="text-2xl font-semibold mb-2 text-white">No stats yet</h3>
+            <p className="text-primary-400 text-center max-w-md mb-6">Connect your gaming accounts and add stat cards to track your performance</p>
+            <Button 
+              className="bg-accent-600 hover:bg-accent-700 text-white border-none px-6 py-3" 
+              onClick={() => setShowModal(true)}
+            >
+              Add Your First Game
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+            {stats.map((stat, index) => (
+              <StatCard 
+                key={`${stat.game}-${stat.platform}-${index}`} 
+                stat={{
+                  ...stat, 
+                  onDelete: stat.ID ? handleDeleteCard : undefined,
+                  onRefresh: stat.ID ? refreshStat : undefined
+                }} 
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {showModal && (

@@ -61,6 +61,9 @@ interface StatData {
 }
 
 const StatCard = ({ stat }: { stat: StatData }) => {
+  // TEST ELEMENT TO VERIFY CHANGES
+  console.log("NEW VERSION OF STATCARD BEING RENDERED");
+  
   const [expanded, setExpanded] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
 
@@ -217,24 +220,30 @@ const StatCard = ({ stat }: { stat: StatData }) => {
 
   // Render appropriate stats based on game type
   const renderGameStats = () => {
+    // This wrapper was used for testing but is no longer needed
+    const wrapInTestContainer = (content: React.ReactNode) => {
+      return content;
+    };
+
     if (!stat.data) {
-      return <p className="text-gray-400">Loading stats...</p>;
+      return wrapInTestContainer(<p className="text-gray-400">Loading stats...</p>);
     }
 
-    if (stat.game === "CS2") {
-      return renderCS2Stats();
-    } else if (stat.game === "Dota 2") {
-      return renderDota2Stats();
-    } else if (stat.game === "Apex Legends") {
-      return renderApexStats();
-    } else if (stat.game === "League of Legends") {
-      return renderLeagueStats();
-    } else if (stat.game === "Valorant") {
-      return renderValorantStats();
-    } else if (stat.game === "Call of Duty") {
-      return renderCoDStats();
-    } else {
-      return <p className="text-gray-400">Stats not available for {stat.game}.</p>;
+    switch(stat.game) {
+      case 'CS2':
+        return wrapInTestContainer(renderCS2Stats());
+      case 'Apex Legends':
+        return wrapInTestContainer(renderApexStats());
+      case 'League of Legends':
+        return wrapInTestContainer(renderLeagueStats());
+      case 'Dota 2':
+        return wrapInTestContainer(renderDota2Stats());
+      case 'Valorant':
+        return wrapInTestContainer(renderValorantStats());
+      case 'Call of Duty':
+        return wrapInTestContainer(renderCoDStats());
+      default:
+        return wrapInTestContainer(<p className="text-gray-400">Stats not available for {stat.game}.</p>);
     }
   };
 
@@ -593,7 +602,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
             {/* Ranked Info */}
             <div className="space-y-4">
               <div className="mb-4">
-                <h4 className="font-semibold mb-2">Ranked Solo/Duo</h4>
+                <h4 className="font-semibold">Ranked Solo/Duo</h4>
                 {rankedData ? (
                   <div className="flex items-center gap-4">
                     {rankedData.tier && (
@@ -791,9 +800,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
                       <p className="font-semibold">{role}</p>
                     </div>
                     <p className="text-sm">
-                      <span className={stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'}>
-                        {stats.winRate.toFixed(0)}%
-                      </span> Win Rate
+                      <span className="text-green-400">{stats.winRate.toFixed(0)}%</span> Win Rate
                     </p>
                     <p className="text-sm text-gray-400">{stats.games} games</p>
                     <p className="text-sm text-gray-400">{stats.kda.toFixed(2)} KDA</p>
@@ -984,14 +991,16 @@ const StatCard = ({ stat }: { stat: StatData }) => {
                     {hero.icon ? (
                       <img src={hero.icon} alt={hero.name} className="w-10 h-10 rounded-full" />
                     ) : (
-                      <span className="text-2xl">{hero.name.charAt(0)}</span>
+                      <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center">
+                        <span>{hero.name.charAt(0)}</span>
+                      </div>
                     )}
-                  </div>
-                  <div>
-                    <p className="font-bold">{hero.name}</p>
-                    <p className="text-sm text-gray-400">
-                      {hero.matches} matches, {hero.win_rate}% win rate
-                    </p>
+                    <div>
+                      <p className="font-bold">{hero.name}</p>
+                      <p className="text-sm text-gray-400">
+                        {hero.matches} matches, {hero.win_rate}% win rate
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1097,7 +1106,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
             </div>
             <div className="bg-black/30 p-2 rounded-md text-center">
               <p className="text-lg font-bold text-blue-400">{kdRatio.toFixed(2)}</p>
-              <p className="text-xs text-gray-300">K/D Ratio</p>
+              <p className="text-xs text-gray-300">K/D</p>
             </div>
             <div className="bg-black/30 p-2 rounded-md text-center">
               <p className="text-lg font-bold text-yellow-400">{totalMatches}</p>
@@ -1239,7 +1248,7 @@ const StatCard = ({ stat }: { stat: StatData }) => {
             <div className="space-y-3">
               {recentMatches.slice(0, 5).map((match: ValorantMatch, index: number) => (
                 <div key={index} className={`bg-gray-800/80 p-4 rounded-lg border-l-4 ${match.won ? 'border-green-500' : 'border-red-500'}`}>
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center mr-3">
                         <span>{match.agent.charAt(0)}</span>
@@ -1397,12 +1406,30 @@ const StatCard = ({ stat }: { stat: StatData }) => {
   if (!expanded) {
     return (
       <Card 
-        className="bg-gray-800 text-white p-6 rounded-lg shadow-lg cursor-pointer transform transition-transform hover:scale-105 relative"
+        className="bg-surface-dark border border-primary-700 text-white p-5 !rounded-sm shadow-xl cursor-pointer transform transition-transform hover:scale-102 hover:shadow-2xl relative"
         onClick={toggleExpanded}
       >
-        <CardContent>
-          <h3 className="text-2xl font-bold mb-2">{stat.game}</h3>
-          <p className="text-gray-400 text-sm">Platform: {stat.platform}</p>
+        <CardContent className="p-0">
+          {/* Header with game name and platform */}
+          <div className="bg-gradient-to-r from-black to-primary-900 px-4 py-3 -m-5 mb-4">
+            <div className="flex items-center gap-2">
+              {/* Game Icon */}
+              <div className="w-8 h-8 bg-accent-600 flex items-center justify-center border border-white/20 flex-shrink-0">
+                {stat.game === 'CS2' && <span className="text-white text-sm font-bold">CS2</span>}
+                {stat.game === 'League of Legends' && <span className="text-white text-xs font-bold">LoL</span>}
+                {stat.game === 'Dota 2' && <span className="text-white text-xs font-bold">D2</span>}
+                {stat.game === 'Valorant' && <span className="text-white text-xs font-bold">VAL</span>}
+                {stat.game === 'Apex Legends' && <span className="text-white text-xs font-bold">AL</span>}
+                {stat.game === 'Call of Duty' && <span className="text-white text-xs font-bold">CoD</span>}
+                {!['CS2', 'League of Legends', 'Dota 2', 'Valorant', 'Apex Legends', 'Call of Duty'].includes(stat.game) && 
+                  <span className="text-white text-xs font-bold">?</span>}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold">{stat.game}</h3>
+                <p className="text-gray-400 text-xs">{stat.platform}</p>
+              </div>
+            </div>
+          </div>
 
           <div className="mt-4 grid grid-cols-3 gap-4">
             {/* First stat - Different per game (Kills, Level for League) */}
@@ -1514,32 +1541,53 @@ const StatCard = ({ stat }: { stat: StatData }) => {
               )}
             </div>
           </div>
-          <p className="text-center text-gray-400 mt-4 text-sm">Click to expand</p>
           
-          <div className="mt-4 flex justify-center">
+          {/* Bottom action area */}
+          <div className="mt-5 border-t border-gray-700 pt-4">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-accent-400 text-xs">Click to expand</span>
+              
+              {/* Action buttons */}
+              <div className="flex items-center gap-2">
+                {stat.ID && stat.onRefresh && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRefresh(e);
+                    }}
+                    className={`hover:text-accent-400 text-gray-400 bg-transparent p-1 ${stat.isLoading ? 'animate-spin' : ''}`}
+                    title="Refresh stats"
+                    disabled={stat.isLoading}
+                  >
+                    <span className="text-sm">↻</span>
+                  </button>
+                )}
+                {stat.ID && stat.onDelete && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(e);
+                    }}
+                    className="text-red-500 hover:text-red-300 bg-transparent p-1"
+                    title="Delete stat card"
+                  >
+                    <span className="text-sm">✕</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            
             <Button 
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 setShowCompareModal(true);
               }}
-              variant="outline"
+              className="bg-accent-600 hover:bg-accent-700 text-white border-0 !rounded-none w-full"
               size="sm"
-              className="w-full"
             >
               Compare with Friends
             </Button>
           </div>
-          
-          {/* Delete button */}
-          {stat.ID && stat.onDelete && (
-            <button 
-              onClick={handleDelete}
-              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
-              title="Delete stat card"
-            >
-              ✕
-            </button>
-          )}
         </CardContent>
       </Card>
     );
@@ -1549,110 +1597,145 @@ const StatCard = ({ stat }: { stat: StatData }) => {
   return (
     <>
       {expanded ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4 overflow-auto">
-          <div className="bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-full overflow-auto">
-            {/* Header with close button */}
-            <div className="p-6 border-b border-gray-700 flex justify-between items-center">
-              <h2 className="text-3xl font-bold">{stat.game} Stats</h2>
-              <div className="flex items-center space-x-2">
-                <Button 
-                  onClick={() => setShowCompareModal(true)}
-                  variant="outline"
-                  size="sm"
-                >
-                  Compare Stats
-                </Button>
-                <button 
-                  onClick={toggleExpanded}
-                  className="bg-gray-700 hover:bg-gray-600 text-white rounded-full w-10 h-10 flex items-center justify-center"
-                >
-                  ✕
-                </button>
+        // Full expanded view
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center overflow-y-auto z-50">
+          <div className="max-w-6xl w-full h-full max-h-screen p-4 flex items-center justify-center">
+            <div className="bg-surface-dark border border-primary-700 text-content-primary !rounded-none w-full max-h-[90vh] overflow-y-auto relative">
+              {/* Fixed header that stays at the top when scrolling */}
+              <div className="sticky top-0 left-0 right-0 bg-surface-dark p-6 flex justify-between items-center border-b border-primary-800 z-10 w-full">
+                <h2 className="text-2xl font-bold text-content-primary">{stat.game} Stats</h2>
+                <div className="flex space-x-3 items-center">
+                  {stat.ID && stat.onRefresh && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRefresh(e);
+                      }}
+                      className={`text-content-secondary hover:text-white bg-transparent border-none p-0 ${stat.isLoading ? 'animate-spin' : ''}`}
+                      title="Refresh stat card"
+                      disabled={stat.isLoading}
+                    >
+                      <span className="text-xl">↻</span>
+                    </button>
+                  )}
+                  <Button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCompareModal(true);
+                    }}
+                    className="bg-accent-600 hover:bg-accent-700 text-white border-none !rounded-none"
+                    size="sm"
+                  >
+                    Compare Stats
+                  </Button>
+                  <button 
+                    onClick={() => toggleExpanded()}
+                    className="text-content-secondary hover:text-white bg-transparent border-none p-0"
+                  >
+                    <span className="text-xl">✕</span>
+                  </button>
+                  {stat.ID && stat.onDelete && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(e);
+                      }}
+                      className="text-red-500 hover:text-red-400 bg-transparent border-none p-0"
+                      title="Delete stat card"
+                    >
+                      <span className="text-xl">✕</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <div className="p-6">
-              {renderGameStats()}
-            </div>
-            
-            {/* Action buttons */}
-            <div className="absolute top-2 right-16 flex space-x-2">
-              {stat.ID && stat.onRefresh && (
-                <button 
-                  onClick={handleRefresh}
-                  className={`bg-blue-500 hover:bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center ${stat.isLoading ? 'animate-spin' : ''}`}
-                  title="Refresh stat card"
-                  disabled={stat.isLoading}
-                >
-                  ↻
-                </button>
-              )}
-              {stat.ID && stat.onDelete && (
-                <button 
-                  onClick={handleDelete}
-                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
-                  title="Delete stat card"
-                >
-                  ✕
-                </button>
-              )}
+              
+              {/* Content */}
+              <div className="p-6">
+                {renderGameStats()}
+              </div>
             </div>
           </div>
         </div>
       ) : (
-        // Compact card view for non-expanded state
-        <Card
-          className="bg-gray-800 text-white rounded-lg shadow-lg relative cursor-pointer hover:bg-gray-700 transition-colors duration-200"
-          onClick={toggleExpanded}
+        // COMPLETELY NEW DESIGN with debugging
+        <div 
+          className="bg-red-900 border-4 border-yellow-400 shadow-xl !rounded-none overflow-hidden max-w-md"
+          onClick={() => toggleExpanded()}
+          style={{transform: 'scale(1)', transition: 'all 0.2s ease'}}
         >
-          <CardContent>
-            <h3 className="text-2xl font-bold mb-2">{stat.game}</h3>
-            <p className="text-gray-400 text-sm">Platform: {stat.platform}</p>
-
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              {/* Game-specific stats rendering */}
-              {renderGameStats()}
-            </div>
-            <p className="text-center text-gray-400 mt-4 text-sm">Click to expand</p>
-            
-            <div className="mt-4 flex justify-center">
-              <Button 
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  setShowCompareModal(true);
-                }}
-                variant="outline"
-                size="sm"
-                className="w-full"
-              >
-                Compare with Friends
-              </Button>
+          {/* Dark gradient header with game name and action buttons */}
+          <div className="bg-gradient-to-r from-black to-primary-900 px-4 py-3 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              {/* Game Icon Badge */}
+              <div className="w-8 h-8 bg-accent-600 flex items-center justify-center border border-white/20">
+                {stat.game === 'CS2' && <span className="text-white text-sm font-bold">CS2</span>}
+                {stat.game === 'League of Legends' && <span className="text-white text-xs font-bold">LoL</span>}
+                {stat.game === 'Dota 2' && <span className="text-white text-xs font-bold">D2</span>}
+                {stat.game === 'Valorant' && <span className="text-white text-xs font-bold">VAL</span>}
+                {stat.game === 'Apex Legends' && <span className="text-white text-xs font-bold">AL</span>}
+                {stat.game === 'Call of Duty' && <span className="text-white text-xs font-bold">CoD</span>}
+              </div>
+              <div>
+                <h3 className="text-white font-bold">{stat.game}</h3>
+                <p className="text-gray-400 text-xs">{stat.platform}</p>
+              </div>
             </div>
             
-            {/* Action buttons */}
-            <div className="absolute top-2 right-2 flex space-x-2">
+            {/* Actions */}
+            <div className="flex items-center space-x-3">
               {stat.ID && stat.onRefresh && (
                 <button 
-                  onClick={handleRefresh}
-                  className={`bg-blue-500 hover:bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center ${stat.isLoading ? 'animate-spin' : ''}`}
-                  title="Refresh stat card"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRefresh(e);
+                  }}
+                  className={`text-content-secondary hover:text-white bg-transparent border-none p-0 ${stat.isLoading ? 'animate-spin' : ''}`}
+                  title="Refresh stats"
                   disabled={stat.isLoading}
                 >
-                  ↻
+                  <span className="text-xl">↻</span>
                 </button>
               )}
               {stat.ID && stat.onDelete && (
                 <button 
-                  onClick={handleDelete}
-                  className="bg-red-500 hover:bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(e);
+                  }}
+                  className="text-red-500 hover:text-red-300 bg-transparent border-none p-0"
                   title="Delete stat card"
                 >
-                  ✕
+                  <span className="text-xl">✕</span>
                 </button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          
+          {/* Stats content in a dark panel */}
+          <div className="p-4 bg-surface-dark">
+            {/* Stat metrics */}
+            <div className="grid grid-cols-3 gap-3 pb-3">
+              {renderGameStats()}
+            </div>
+            
+            {/* Bottom action bar */}
+            <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-700">
+              <span className="text-accent-400 text-xs">Tap for details</span>
+              
+              {/* Action buttons */}
+              <Button
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  setShowCompareModal(true);
+                }}
+                className="bg-accent-600 hover:bg-accent-700 border-0 rounded-none text-white text-xs px-3 py-1"
+                size="sm"
+              >
+                Compare
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
       
       {showCompareModal && (

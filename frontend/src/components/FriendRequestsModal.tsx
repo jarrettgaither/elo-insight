@@ -53,42 +53,43 @@ const FriendRequestsModal = ({ onClose, onRequestAccepted }: FriendRequestsModal
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">Friend Requests</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center p-4 z-50">
+      <div className="bg-surface-dark border border-primary-700 text-content-primary !rounded-none shadow-xl max-w-md w-full">
+        <div className="flex justify-between items-center p-6 border-b border-primary-800">
+          <h2 className="text-2xl font-bold text-content-primary">Friend Requests</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            className="bg-transparent hover:text-white text-content-secondary border-none p-0"
             aria-label="Close"
             type="button"
           >
-            ✕
+            <span className="text-xl">✕</span>
           </button>
         </div>
 
-        {error && (
-          <div className="bg-red-500 text-white p-3 rounded-md mb-4">
-            {error}
-          </div>
-        )}
+        <div className="p-6">
+          {error && (
+            <div className="bg-red-900/40 text-red-300 p-3 mb-4 border-l-4 border-red-600 !rounded-none">
+              {error}
+            </div>
+          )}
 
-        {loading ? (
-          <div className="text-center py-4 text-gray-400">Loading requests...</div>
-        ) : requests.length === 0 ? (
-          <div className="text-center py-6 text-gray-400">
-            You don't have any pending friend requests.
-          </div>
-        ) : (
+          {loading ? (
+            <div className="text-center py-4 text-content-secondary">Loading requests...</div>
+          ) : requests.length === 0 ? (
+            <div className="text-center py-6 text-content-secondary">
+              You don't have any pending friend requests.
+            </div>
+          ) : (
           <div className="max-h-96 overflow-y-auto space-y-3">
             {requests.map((request: Friend) => (
               <div
                 key={request.id}
-                className="bg-gray-700 p-3 rounded-md"
+                className="bg-primary-900/50 border border-primary-800 p-3 !rounded-none"
               >
                 <div className="mb-2">
-                  <div className="text-white font-medium">{request.username}</div>
-                  <div className="text-gray-400 text-sm">{request.email}</div>
+                  <div className="text-content-primary font-medium">{request.username}</div>
+                  <div className="text-content-secondary text-sm">{request.email}</div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button
@@ -97,6 +98,7 @@ const FriendRequestsModal = ({ onClose, onRequestAccepted }: FriendRequestsModal
                     size="sm"
                     disabled={loading}
                     type="button"
+                    className="bg-red-700 hover:bg-red-800 text-white border-none !rounded-none"
                   >
                     Reject
                   </Button>
@@ -105,6 +107,7 @@ const FriendRequestsModal = ({ onClose, onRequestAccepted }: FriendRequestsModal
                     size="sm"
                     disabled={loading}
                     type="button"
+                    className="bg-accent-600 hover:bg-accent-700 text-white border-none !rounded-none"
                   >
                     Accept
                   </Button>
@@ -114,10 +117,16 @@ const FriendRequestsModal = ({ onClose, onRequestAccepted }: FriendRequestsModal
           </div>
         )}
 
-        <div className="mt-6 flex justify-end">
-          <Button onClick={onClose} variant="outline" type="button">
-            Close
-          </Button>
+          <div className="mt-6 flex justify-end">
+            <Button 
+              onClick={onClose} 
+              variant="outline" 
+              type="button"
+              className="border-primary-700 text-content-secondary hover:bg-primary-800 !rounded-none"
+            >
+              Close
+            </Button>
+          </div>
         </div>
       </div>
     </div>

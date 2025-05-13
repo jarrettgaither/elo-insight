@@ -62,7 +62,7 @@ function App() {
     <Router>
       {/* Pass `isLoggedIn` and `setIsLoggedIn` to Navbar */}
       <Navbar isLoggedIn={isLoggedIn} handleLogout={handleLogout} />
-      <div className="flex justify-center items-center min-h-screen bg-gray-900 text-white">
+      <div className="flex justify-center items-center min-h-screen bg-black text-white pt-16">
         <Routes>
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} /> {/* Pass `setIsLoggedIn` */}

@@ -72,53 +72,61 @@ const AddStatModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-      <div className="bg-gray-800 text-white p-6 rounded-lg w-96">
-        <h3 className="text-xl font-bold mb-4">Add Game Stats</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
+      <div className="bg-surface-dark border border-primary-700 text-white p-6 shadow-lg w-96">
+        <div className="border-b border-primary-800 pb-3 mb-5">
+          <h3 className="text-xl font-bold text-white">Add Game Stats</h3>
+        </div>
 
-        <label className="block mb-2">Select Game:</label>
-        <select
-          value={selectedGame}
-          onChange={(e) => handleGameChange(e.target.value)}
-          className="w-full p-2 bg-gray-700 text-white rounded mb-4"
-        >
-          <option value="">-- Select Game --</option>
-          {availableGames.map((game) => (
-            <option key={game} value={game}>
-              {game}
-            </option>
-          ))}
-        </select>
-
-        <label className="block mb-2">Select Platform:</label>
-        <select
-          value={selectedPlatform}
-          onChange={(e) => setSelectedPlatform(e.target.value)}
-          className="w-full p-2 bg-gray-700 text-white rounded mb-4"
-          disabled={availablePlatforms.length === 0}
-        >
-          <option value="">-- Select Platform --</option>
-          {availablePlatforms.map((platform) => (
-            <option key={platform} value={platform}>
-              {platform}
-            </option>
-          ))}
-        </select>
-        
-        {selectedGame && availablePlatforms.length === 0 && (
-          <div className="text-amber-500 mb-4 text-sm">
-            You need to link your gaming account before adding {selectedGame} stats. 
-            Visit your profile to link the required accounts.
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-primary-300 mb-1.5">Select Game:</label>
+            <select
+              value={selectedGame}
+              onChange={(e) => handleGameChange(e.target.value)}
+              className="w-full p-2.5 bg-primary-950 border border-primary-800 text-white rounded focus:border-accent-600 focus:outline-none"
+            >
+              <option value="">-- Select Game --</option>
+              {availableGames.map((game) => (
+                <option key={game} value={game}>
+                  {game}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
 
-        <div className="flex justify-end">
-          <Button onClick={onClose} className="mr-2 bg-gray-600 hover:bg-gray-700">
-            Cancel
-          </Button>
-          <Button onClick={handleAdd} className="bg-blue-600 hover:bg-blue-700">
-            Save
-          </Button>
+          <div>
+            <label className="block text-sm font-medium text-primary-300 mb-1.5">Select Platform:</label>
+            <select
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+              className="w-full p-2.5 bg-primary-950 border border-primary-800 text-white rounded focus:border-accent-600 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={availablePlatforms.length === 0}
+            >
+              <option value="">-- Select Platform --</option>
+              {availablePlatforms.map((platform) => (
+                <option key={platform} value={platform}>
+                  {platform}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {selectedGame && availablePlatforms.length === 0 && (
+            <div className="bg-accent-900/20 border-l-4 border-accent-600 p-3 text-accent-300 text-sm">
+              You need to link your gaming account before adding {selectedGame} stats. 
+              Visit your profile to link the required accounts.
+            </div>
+          )}
+
+          <div className="flex justify-end pt-4 space-x-3 border-t border-primary-900 mt-4">
+            <Button onClick={onClose} className="bg-primary-800 hover:bg-primary-700 border-none">
+              Cancel
+            </Button>
+            <Button onClick={handleAdd} className="bg-accent-600 hover:bg-accent-700 border-none">
+              Add Stats
+            </Button>
+          </div>
         </div>
       </div>
     </div>

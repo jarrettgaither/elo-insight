@@ -183,46 +183,94 @@ export function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
-      <Card className="w-full max-w-md bg-gray-800 text-white p-6 shadow-lg">
-        <CardContent>
-          <h2 className="text-2xl font-bold text-center mb-4">Register</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input 
-              type="text" 
-              name="username" 
-              placeholder="Username" 
-              value={form.username} 
-              onChange={handleInputChange} 
-              onFocus={() => handleFieldFocus('username')}
-              onBlur={() => handleFieldBlur('username')}
-              className="mb-4" 
-            />
-            <Input 
-              type="email" 
-              name="email" 
-              placeholder="Email" 
-              value={form.email} 
-              onChange={handleInputChange} 
-              onFocus={() => handleFieldFocus('email')}
-              onBlur={() => handleFieldBlur('email')}
-              className="mb-4" 
-            />
-            <Input 
-              type="password" 
-              name="password" 
-              placeholder="Password" 
-              value={form.password} 
-              onChange={handleInputChange} 
-              onFocus={() => handleFieldFocus('password')}
-              onBlur={() => handleFieldBlur('password')}
-              className="mb-4" 
-            />
-            <Button className="w-full">Register</Button>
-          </form>
-          <p className="text-red-400 text-center mt-2">{message}</p>
-        </CardContent>
-      </Card>
+    <div className="flex items-center justify-center min-h-screen w-full bg-black fixed inset-0">
+      <div className="w-full max-w-md px-4 pt-36 pb-8 z-10">
+        {/* Logo or branding element */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-white mb-1">Elo Insight</h1>
+          <p className="text-accent-400">Track your gaming performance across platforms</p>
+        </div>
+        
+        <Card variant="bordered" className="w-full border-primary-700 bg-surface-dark">
+          <CardContent>
+            <h2 className="text-2xl font-bold text-white mb-6">Create an account</h2>
+            
+            {message && (
+              <div className="bg-accent-900/40 text-accent-300 p-3 mb-6 border-l-4 border-accent-600">
+                {message}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-content-secondary mb-1.5">
+                  Username
+                </label>
+                <Input 
+                  id="username"
+                  type="text" 
+                  name="username" 
+                  placeholder="Choose a username" 
+                  value={form.username} 
+                  onChange={handleInputChange} 
+                  onFocus={() => handleFieldFocus('username')}
+                  onBlur={() => handleFieldBlur('username')}
+                  className="bg-primary-950 border-primary-800 text-white focus:border-accent-600"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-content-secondary mb-1.5">
+                  Email address
+                </label>
+                <Input 
+                  id="email"
+                  type="email" 
+                  name="email" 
+                  placeholder="Enter your email" 
+                  value={form.email} 
+                  onChange={handleInputChange} 
+                  onFocus={() => handleFieldFocus('email')}
+                  onBlur={() => handleFieldBlur('email')}
+                  className="bg-primary-950 border-primary-800 text-white focus:border-accent-600"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-content-secondary mb-1.5">
+                  Password
+                </label>
+                <Input 
+                  id="password"
+                  type="password" 
+                  name="password" 
+                  placeholder="Create a strong password" 
+                  value={form.password} 
+                  onChange={handleInputChange} 
+                  onFocus={() => handleFieldFocus('password')}
+                  onBlur={() => handleFieldBlur('password')}
+                  className="bg-primary-950 border-primary-800 text-white focus:border-accent-600"
+                />
+                <p className="mt-1.5 text-xs text-primary-400">Password must be at least 8 characters</p>
+              </div>
+              
+              <Button 
+                className="w-full mt-6 bg-accent-600 hover:bg-accent-700 text-white border-none" 
+                size="lg"
+              >
+                Create Account
+              </Button>
+              
+              <p className="text-center text-primary-400 mt-4">
+                Already have an account?{" "}
+                <a href="/login" className="text-accent-500 hover:text-accent-400 transition-colors">
+                  Sign in
+                </a>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

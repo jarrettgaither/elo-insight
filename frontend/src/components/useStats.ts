@@ -883,10 +883,15 @@ const useStats = () => {
   useEffect(() => {
     if (profile && stats.length > 0 && !initialStatsFetched) {
       console.log("Initial stats available, performing first fetch");
-      throttledFetchStats();
+      // Force immediate fetch of game stats after profile and stats are loaded
+      fetchUpdatedStats().then(() => {
+        console.log("✅ Initial stats fetch completed successfully");
+      }).catch(error => {
+        console.error("❌ Error during initial stats fetch:", error);
+      });
       setInitialStatsFetched(true);
     }
-  }, [profile, stats.length, initialStatsFetched, throttledFetchStats]);
+  }, [profile, stats.length, initialStatsFetched, fetchUpdatedStats]);
 
   // Use the throttled fetch for refreshing to prevent duplicate calls
   return { 

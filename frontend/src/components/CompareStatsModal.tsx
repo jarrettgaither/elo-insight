@@ -130,15 +130,15 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
   };
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50 overflow-y-auto">
-      <div className="bg-gray-800 text-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-gray-900 p-6 flex justify-between items-center border-b border-gray-700">
-          <h2 className="text-3xl font-bold">Compare Stats</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center p-4 z-50 overflow-y-auto">
+      <div className="bg-surface-dark border border-primary-700 text-content-primary !rounded-none shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-surface-dark p-6 flex justify-between items-center border-b border-primary-800">
+          <h2 className="text-2xl font-bold text-content-primary">Compare Stats</h2>
           <button 
             onClick={onClose}
-            className="bg-gray-700 hover:bg-gray-600 text-white rounded-full w-10 h-10 flex items-center justify-center"
+            className="bg-transparent hover:text-white text-content-secondary border-none p-0"
           >
-            ✕
+            <span className="text-xl">✕</span>
           </button>
         </div>
         
@@ -146,11 +146,11 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
           {!compareData ? (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-content-secondary mb-2">
                   Platform
                 </label>
                 <select 
-                  className="w-full p-3 bg-gray-700 rounded-md text-white"
+                  className="w-full p-3 bg-surface-dark border border-primary-800 !rounded-none text-content-primary focus:border-accent-600 focus:outline-none"
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
                 >
@@ -161,40 +161,40 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-content-secondary mb-2">
                   Search Friends
                 </label>
                 <input
                   type="text"
                   placeholder="Search by username or email..."
-                  className="w-full p-3 bg-gray-700 rounded-md text-white"
+                  className="w-full p-3 bg-surface-dark border border-primary-800 !rounded-none text-content-primary focus:border-accent-600 focus:outline-none"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               
               <div className="mt-4">
-                <h3 className="text-xl font-semibold mb-4">Select a Friend</h3>
+                <h3 className="text-xl font-semibold mb-4 text-content-primary border-b border-primary-800 pb-2">Select a Friend</h3>
                 {loading ? (
-                  <div className="text-center text-gray-400 py-4">Loading friends...</div>
+                  <div className="text-center text-content-secondary py-4">Loading friends...</div>
                 ) : filteredFriends.length === 0 ? (
-                  <div className="text-center text-gray-400 py-4">No friends found</div>
+                  <div className="text-center text-content-secondary py-4">No friends found</div>
                 ) : (
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {filteredFriends.map(friend => (
                       <div
                         key={friend.id}
-                        className={`p-3 rounded-md cursor-pointer ${
+                        className={`p-3 !rounded-none cursor-pointer ${
                           selectedFriendId === friend.friend_id || selectedFriendId === friend.user_id
-                            ? 'bg-blue-700'
-                            : 'bg-gray-700 hover:bg-gray-600'
+                            ? 'bg-accent-900/40 border-l-4 border-accent-600'
+                            : 'bg-surface-dark/50 hover:bg-surface-dark/70 border border-primary-800'
                         }`}
                         onClick={() => handleSelectFriend(
                           friend.user_id === userStat.userID ? friend.friend_id : friend.user_id
                         )}
                       >
-                        <div className="font-medium">{friend.username}</div>
-                        <div className="text-sm text-gray-400">{friend.email}</div>
+                        <div className="font-medium text-content-primary">{friend.username}</div>
+                        <div className="text-sm text-content-secondary">{friend.email}</div>
                       </div>
                     ))}
                   </div>
@@ -205,6 +205,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                 <Button 
                   onClick={() => handleSelectFriend(selectedFriendId || 0)}
                   disabled={selectedFriendId === null}
+                  className="bg-accent-600 hover:bg-accent-700 text-white border-none !rounded-none"
                 >
                   Compare Stats
                 </Button>
@@ -214,21 +215,21 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
             <div>
               <div className="flex flex-col md:flex-row gap-8 mb-6">
                 <div className="w-full md:w-1/2">
-                  <h3 className="text-xl font-bold mb-4 text-center">You</h3>
-                  <div className="bg-gray-700 rounded-lg p-6 mb-6">
-                    <div className="flex justify-between mb-4">
+                  <h3 className="text-xl font-bold mb-4 text-center text-content-primary">You</h3>
+                  <div className="bg-surface-dark !rounded-none p-6 mb-6 border border-primary-800">
+                    <div className="flex justify-between mb-4 pb-2 border-b border-primary-800">
                       <div>
-                        <h4 className="text-lg font-semibold">{userStat.game}</h4>
-                        <p className="text-sm text-gray-400">Platform: {userStat.platform}</p>
+                        <h4 className="text-lg font-semibold text-content-primary">{userStat.game}</h4>
+                        <p className="text-sm text-content-secondary">Platform: {userStat.platform}</p>
                       </div>
                     </div>
                     
-                    <h5 className="text-lg font-semibold mb-2">Combat Stats</h5>
+                    <h5 className="text-lg font-semibold mb-2 text-content-secondary">Combat Stats</h5>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       {/* For kills, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Kills</p>
-                        <p className="text-2xl font-bold">{userStat.data.total_kills || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Kills</p>
+                        <p className="text-2xl font-bold text-content-primary">{userStat.data.total_kills || 0}</p>
                         {compareData.data.total_kills !== undefined && userStat.data.total_kills !== undefined && (
                           <div className="absolute top-2 right-2">
                             {userStat.data.total_kills > compareData.data.total_kills ? (
@@ -242,9 +243,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For deaths, lower is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Deaths</p>
-                        <p className="text-2xl font-bold">{userStat.data.total_deaths || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Deaths</p>
+                        <p className="text-2xl font-bold text-content-primary">{userStat.data.total_deaths || 0}</p>
                         {compareData.data.total_deaths !== undefined && userStat.data.total_deaths !== undefined && (
                           <div className="absolute top-2 right-2">
                             {userStat.data.total_deaths < compareData.data.total_deaths ? (
@@ -258,9 +259,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For K/D ratio, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">K/D Ratio</p>
-                        <p className="text-2xl font-bold">
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">K/D Ratio</p>
+                        <p className="text-2xl font-bold text-content-primary">
                           {userStat.data.total_deaths ? 
                             (userStat.data.total_kills / userStat.data.total_deaths).toFixed(2) : 
                             userStat.data.total_kills}
@@ -281,9 +282,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For accuracy, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Accuracy</p>
-                        <p className="text-2xl font-bold">
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Accuracy</p>
+                        <p className="text-2xl font-bold text-content-primary">
                           {userStat.data.total_shots_fired ? 
                             ((userStat.data.total_shots_hit / userStat.data.total_shots_fired) * 100).toFixed(2) : 
                             0}%
@@ -308,7 +309,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                     <h5 className="text-lg font-semibold mb-2">Performance Stats</h5>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       {/* For headshot %, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
+                      <div className="bg-gray-800 p-3 !rounded-none relative">
                         <p className="text-gray-400 text-sm">Headshot %</p>
                         <p className="text-xl font-bold">
                           {userStat.data.total_kills ? 
@@ -331,9 +332,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For MVPs, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">MVPs</p>
-                        <p className="text-xl font-bold">{userStat.data.total_mvps || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">MVPs</p>
+                        <p className="text-xl font-bold text-content-primary">{userStat.data.total_mvps || 0}</p>
                         {compareData.data.total_mvps !== undefined && userStat.data.total_mvps !== undefined && (
                           <div className="absolute top-2 right-2">
                             {userStat.data.total_mvps > compareData.data.total_mvps ? (
@@ -347,7 +348,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For Win Rate, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
+                      <div className="bg-gray-800 p-3 !rounded-none relative">
                         <p className="text-gray-400 text-sm">Win Rate</p>
                         <p className="text-xl font-bold">
                           {userStat.data.total_matches_played ? 
@@ -370,9 +371,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For Bombs Planted, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Bombs Planted</p>
-                        <p className="text-xl font-bold">{userStat.data.total_planted_bombs || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Bombs Planted</p>
+                        <p className="text-xl font-bold text-content-primary">{userStat.data.total_planted_bombs || 0}</p>
                         {compareData.data.total_planted_bombs !== undefined && userStat.data.total_planted_bombs !== undefined && (
                           <div className="absolute top-2 right-2">
                             {userStat.data.total_planted_bombs > compareData.data.total_planted_bombs ? (
@@ -387,7 +388,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                       </div>
                     </div>
                     
-                    <h5 className="text-lg font-semibold mb-2">Top Weapons</h5>
+                    <h5 className="text-lg font-semibold mb-2 text-content-secondary">Top Weapons</h5>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries(userStat.data)
                         .filter(([key]) => key.startsWith('total_kills_') && key !== 'total_kills_headshot')
@@ -396,9 +397,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         .map(([key, value]) => {
                           const weaponName = key.replace('total_kills_', '').toUpperCase();
                           return (
-                            <div key={key} className="flex justify-between bg-gray-800 p-2 rounded">
-                              <span>{weaponName}</span>
-                              <span className="font-bold">{Number(value)} kills</span>
+                            <div key={key} className="flex justify-between bg-surface-dark p-2 rounded border border-primary-800">
+                              <span className="text-content-secondary">{weaponName}</span>
+                              <span className="font-bold text-content-primary">{Number(value)} kills</span>
                             </div>
                           );
                         })
@@ -408,21 +409,21 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                 </div>
                 
                 <div className="w-full md:w-1/2">
-                  <h3 className="text-xl font-bold mb-4 text-center">{compareData.friendName}</h3>
-                  <div className="bg-gray-700 rounded-lg p-6 mb-6">
-                    <div className="flex justify-between mb-4">
+                  <h3 className="text-xl font-bold mb-4 text-center text-content-primary">{compareData.friendName}</h3>
+                  <div className="bg-surface-dark !rounded-none p-6 mb-6 border border-primary-800">
+                    <div className="flex justify-between mb-4 pb-2 border-b border-primary-800">
                       <div>
-                        <h4 className="text-lg font-semibold">{compareData.game}</h4>
-                        <p className="text-sm text-gray-400">Platform: {compareData.platform}</p>
+                        <h4 className="text-lg font-semibold text-content-primary">{compareData.game}</h4>
+                        <p className="text-sm text-content-secondary">Platform: {compareData.platform}</p>
                       </div>
                     </div>
                     
-                    <h5 className="text-lg font-semibold mb-2">Combat Stats</h5>
+                    <h5 className="text-lg font-semibold mb-2 text-content-secondary">Combat Stats</h5>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       {/* For kills, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Kills</p>
-                        <p className="text-2xl font-bold">{compareData.data.total_kills || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Kills</p>
+                        <p className="text-2xl font-bold text-content-primary">{compareData.data.total_kills || 0}</p>
                         {compareData.data.total_kills !== undefined && userStat.data.total_kills !== undefined && (
                           <div className="absolute top-2 right-2">
                             {compareData.data.total_kills > userStat.data.total_kills ? (
@@ -436,9 +437,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For deaths, lower is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Deaths</p>
-                        <p className="text-2xl font-bold">{compareData.data.total_deaths || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Deaths</p>
+                        <p className="text-2xl font-bold text-content-primary">{compareData.data.total_deaths || 0}</p>
                         {compareData.data.total_deaths !== undefined && userStat.data.total_deaths !== undefined && (
                           <div className="absolute top-2 right-2">
                             {compareData.data.total_deaths < userStat.data.total_deaths ? (
@@ -452,9 +453,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For K/D ratio, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">K/D Ratio</p>
-                        <p className="text-2xl font-bold">
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">K/D Ratio</p>
+                        <p className="text-2xl font-bold text-content-primary">
                           {compareData.data.total_deaths ? 
                             (compareData.data.total_kills / compareData.data.total_deaths).toFixed(2) : 
                             compareData.data.total_kills}
@@ -475,9 +476,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For accuracy, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Accuracy</p>
-                        <p className="text-2xl font-bold">
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Accuracy</p>
+                        <p className="text-2xl font-bold text-content-primary">
                           {compareData.data.total_shots_fired ? 
                             ((compareData.data.total_shots_hit / compareData.data.total_shots_fired) * 100).toFixed(2) : 
                             0}%
@@ -502,7 +503,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                     <h5 className="text-lg font-semibold mb-2">Performance Stats</h5>
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       {/* For headshot %, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
+                      <div className="bg-gray-800 p-3 !rounded-none relative">
                         <p className="text-gray-400 text-sm">Headshot %</p>
                         <p className="text-xl font-bold">
                           {compareData.data.total_kills ? 
@@ -525,9 +526,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For MVPs, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">MVPs</p>
-                        <p className="text-xl font-bold">{compareData.data.total_mvps || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">MVPs</p>
+                        <p className="text-xl font-bold text-content-primary">{compareData.data.total_mvps || 0}</p>
                         {compareData.data.total_mvps !== undefined && userStat.data.total_mvps !== undefined && (
                           <div className="absolute top-2 right-2">
                             {compareData.data.total_mvps > userStat.data.total_mvps ? (
@@ -541,7 +542,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For Win Rate, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
+                      <div className="bg-gray-800 p-3 !rounded-none relative">
                         <p className="text-gray-400 text-sm">Win Rate</p>
                         <p className="text-xl font-bold">
                           {compareData.data.total_matches_played ? 
@@ -564,9 +565,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         )}
                       </div>
                       {/* For Bombs Planted, higher is better */}
-                      <div className="bg-gray-800 p-3 rounded-lg relative">
-                        <p className="text-gray-400 text-sm">Bombs Planted</p>
-                        <p className="text-xl font-bold">{compareData.data.total_planted_bombs || 0}</p>
+                      <div className="bg-surface-dark p-3 !rounded-none relative border border-primary-800">
+                        <p className="text-content-secondary text-sm">Bombs Planted</p>
+                        <p className="text-xl font-bold text-content-primary">{compareData.data.total_planted_bombs || 0}</p>
                         {compareData.data.total_planted_bombs !== undefined && userStat.data.total_planted_bombs !== undefined && (
                           <div className="absolute top-2 right-2">
                             {compareData.data.total_planted_bombs > userStat.data.total_planted_bombs ? (
@@ -581,7 +582,7 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                       </div>
                     </div>
                     
-                    <h5 className="text-lg font-semibold mb-2">Top Weapons</h5>
+                    <h5 className="text-lg font-semibold mb-2 text-content-secondary">Top Weapons</h5>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries(compareData.data)
                         .filter(([key]) => key.startsWith('total_kills_') && key !== 'total_kills_headshot')
@@ -590,9 +591,9 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                         .map(([key, value]) => {
                           const weaponName = key.replace('total_kills_', '').toUpperCase();
                           return (
-                            <div key={key} className="flex justify-between bg-gray-800 p-2 rounded">
-                              <span>{weaponName}</span>
-                              <span className="font-bold">{Number(value)} kills</span>
+                            <div key={key} className="flex justify-between bg-surface-dark p-2 rounded border border-primary-800">
+                              <span className="text-content-secondary">{weaponName}</span>
+                              <span className="font-bold text-content-primary">{Number(value)} kills</span>
                             </div>
                           );
                         })
@@ -602,15 +603,18 @@ const CompareStatsModal = ({ onClose, userStat }: CompareStatsModalProps) => {
                 </div>
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-end mt-6">
                 <Button 
                   onClick={() => setCompareData(null)}
                   variant="outline"
-                  className="mr-2"
+                  className="mr-2 border-primary-700 text-content-secondary hover:bg-primary-800 !rounded-none"
                 >
                   Select Different Friend
                 </Button>
-                <Button onClick={onClose}>
+                <Button 
+                  onClick={onClose}
+                  className="bg-accent-600 hover:bg-accent-700 text-white !rounded-none border-none"
+                >
                   Close
                 </Button>
               </div>
