@@ -87,6 +87,8 @@ services:
       - ZO_ROOT_USER_PASSWORD=admin
       - ZO_OTLP_GRPC_ENABLED=true
       - ZO_OTLP_HTTP_ENABLED=true
+      - ZO_LOG_LEVEL=error
+      - RUST_LOG=error
     ports:
       - "5080:5080" # Web UI
       - "5081:5081" # gRPC

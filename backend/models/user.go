@@ -8,12 +8,17 @@ import (
 // User represents a user in the database
 type User struct {
 	gorm.Model
-	Username   string `gorm:"not null"`
-	Email      string `gorm:"not null"`
-	Password   string `gorm:"not null"`
-	SteamID    string `gorm:"default:''"`
-	RiotID     string `gorm:"default:''"`
-	EAUsername string `gorm:"default:''"` // EA account username for Apex Legends
+	Username      string `gorm:"not null" json:"username"`
+	Email         string `gorm:"not null" json:"email"`
+	Password      string `gorm:"not null" json:"password"`
+	SteamID       string `gorm:"default:''" json:"steam_id"`
+	RiotID        string `gorm:"default:''" json:"riot_id"` // Deprecated, use RiotGameName, RiotTagline, RiotPUUID
+	RiotGameName  string `gorm:"default:''" json:"riot_game_name"`
+	RiotTagline   string `gorm:"default:''" json:"riot_tagline"`
+	RiotPUUID     string `gorm:"default:''" json:"riot_puuid"`
+	EAUsername    string `gorm:"default:''" json:"ea_username"` // EA account username for Apex Legends
+	XboxID        string `gorm:"default:''" json:"xbox_id"` // Xbox Live Gamertag
+	PlayStationID string `gorm:"default:''" json:"playstation_id"` // PlayStation Network ID
 }
 
 // Hashes the user's password before storing it

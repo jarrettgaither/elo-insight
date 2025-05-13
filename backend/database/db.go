@@ -7,27 +7,38 @@ import (
 
 	"elo-insight/backend/models"
 
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
-func ConnectDB() { //Create postgres gorm connection string
-	dbVars := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", //create
+func ConnectDB() { 
+	// Create postgres gorm connection string
+	dbVars := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
 		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
 
-	db, err := gorm.Open(postgres.Open(dbVars), &gorm.Config{}) //connect to database
+	// Connect to database with enhanced logging for development
+	db, err := gorm.Open(postgres.Open(dbVars), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info), // Enhanced logging for development
+	}) 
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Run migrations in case user model has changed
-	err = db.AutoMigrate(&models.User{}, &models.UserStat{})
+
+	// Run migrations for all models
+	err = db.AutoMigrate(&models.User{}, &models.UserStat{}, &models.Friendship{})
 	if err != nil {
 		log.Fatal("Migration failed:", err)
 	}
 
 	DB = db
-	fmt.Println("Database connected successfully!")
+	
+	// Initialize OpenTelemetry tracing for database operations
+	InitTracing()
+	
+	fmt.Println("Database connected successfully with tracing enabled!")
 }

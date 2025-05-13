@@ -6,6 +6,8 @@ import Login from "./components/login";
 import Profile from "./components/profile";
 import Navbar from "./components/navbar";
 import Statistics from "./components/Statistics";
+import FriendsList from "./components/FriendsList";
+import HomePage from "./components/HomePage";
 
 const PrivateRoute = ({ element }: { element: React.JSX.Element }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -61,12 +63,14 @@ function App() {
     <Router>
       {/* Pass `isLoggedIn` and `setIsLoggedIn` to Navbar */}
       <Navbar isLoggedIn={isLoggedIn} handleLogout={handleLogout} />
-      <div className="flex justify-center items-center min-h-screen bg-gray-900 text-white">
+      <div className="flex justify-center items-center min-h-screen bg-black text-white pt-16">
         <Routes>
+          <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} /> {/* Pass `setIsLoggedIn` */}
           <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
           <Route path="/statistics" element={<PrivateRoute element={<Statistics />} />} />
+          <Route path="/friends" element={<PrivateRoute element={<FriendsList />} />} />
         </Routes>
       </div>
     </Router>
