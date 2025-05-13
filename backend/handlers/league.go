@@ -190,6 +190,14 @@ func GetLeagueOfLegendsStats(c *gin.Context) {
 	}
 	log.Printf("Found summoner: %s (PUUID: %s)", summoner.Name, summoner.PUUID)
 
+	// Get champion mastery data
+	log.Println("Fetching champion mastery data")
+	championMasteries, err := getChampionMasteries(summoner.ID, riotAPIKey)
+	if err != nil {
+		log.Printf("Warning: Failed to get champion mastery data: %v", err)
+		// Continue without mastery data - not a critical failure
+	}
+
 	// Step 2: Get ranked data for the summoner using multiple endpoints
 	rankedData, err := getRankedData(summoner.ID, riotAPIKey)
 	if err != nil {
@@ -241,14 +249,52 @@ func GetLeagueOfLegendsStats(c *gin.Context) {
 		matchStats.TopChampions = championStats
 	}
 
-	// Combine all data into a response
-	response := gin.H{
-		"summoner": summoner,
-		"ranked":   rankedData,
-		"matches":  matchStats,
+	// Get champion name mapping from API for mastery data
+	championMasteryWithNames := []ChampionStats{}
+	
+	if len(championMasteries) > 0 {
+		// We would ideally fetch champion name data from Riot's Data Dragon API
+		// For now, we'll use a simplified approach with hardcoded mappings for demo
+		championIDToName := map[int]string{
+			1: "Annie", 2: "Olaf", 3: "Galio", 4: "Twisted Fate", 5: "Xin Zhao",
+			6: "Urgot", 7: "LeBlanc", 8: "Vladimir", 9: "Fiddlesticks", 10: "Kayle",
+			// Add more mappings as needed or fetch from Data Dragon
+		}
+		
+		// Convert mastery data to champion stats
+		for _, mastery := range championMasteries {
+			championName := championIDToName[mastery.ChampionID]
+			if championName == "" {
+				championName = fmt.Sprintf("Champion #%d", mastery.ChampionID)
+			}
+			
+			championMasteryWithNames = append(championMasteryWithNames, ChampionStats{
+				ChampionID:     mastery.ChampionID,
+				ChampionName:   championName,
+				ChampionLevel:  mastery.ChampionLevel,
+				ChampionPoints: mastery.ChampionPoints,
+				ChestGranted:   mastery.ChestGranted,
+				// We don't have these values from mastery data
+				Games:      0,
+				Wins:       0,
+				Losses:     0,
+				KDA:        0,
+			})
+		}
+		
+		// Limit to top 5 masteries
+		if len(championMasteryWithNames) > 5 {
+			championMasteryWithNames = championMasteryWithNames[:5]
+		}
 	}
-
-	c.JSON(http.StatusOK, response)
+	
+	// Return response with all data
+	c.JSON(http.StatusOK, gin.H{
+		"summoner":  summoner,
+		"ranked":    rankedData,
+		"matches":   matchStats,
+		"champions": championMasteryWithNames,
+	})
 }
 
 // Summoner represents a League of Legends player
@@ -327,6 +373,9 @@ type ChampionStats struct {
 	KDA                    float64 `json:"kda"`
 	AverageVisionScore     float64 `json:"averageVisionScore"`
 	ObjectiveParticipation float64 `json:"objectiveParticipation"`
+	ChampionLevel          int     `json:"championLevel,omitempty"`
+	ChampionPoints         int     `json:"championPoints,omitempty"`
+	ChestGranted           bool    `json:"chestGranted,omitempty"`
 }
 
 // MatchDetails contains basic information about a match
@@ -349,6 +398,63 @@ type RiotAccount struct {
 	PUUID    string `json:"puuid"`
 	GameName string `json:"gameName"`
 	TagLine  string `json:"tagLine"`
+}
+
+// ChampionMastery represents champion mastery data from Riot API
+type ChampionMastery struct {
+	ChampionID                   int       `json:"championId"`
+	ChampionLevel                int       `json:"championLevel"`
+	ChampionPoints               int       `json:"championPoints"`
+	LastPlayTime                 int64     `json:"lastPlayTime"`
+	ChampionPointsSinceLastLevel int       `json:"championPointsSinceLastLevel"`
+	ChampionPointsUntilNextLevel int       `json:"championPointsUntilNextLevel"`
+	ChestGranted                 bool      `json:"chestGranted"`
+	TokensEarned                 int       `json:"tokensEarned"`
+	SummonerID                   string    `json:"summonerId"`
+}
+
+// getChampionMasteries retrieves champion mastery data for a summoner using summoner ID
+func getChampionMasteries(summonerID string, apiKey string) ([]ChampionMastery, error) {
+	log.Println("Fetching champion mastery data for summoner ID:", summonerID)
+	
+	// Construct the champion mastery API URL
+	url := fmt.Sprintf("%s/lol/champion-mastery/v4/champion-masteries/by-summoner/%s", RiotAPIBaseURL, summonerID)
+	
+	// Create HTTP request with Riot API key
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %v", err)
+	}
+	req.Header.Set("X-Riot-Token", apiKey)
+	
+	// Execute request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %v", err)
+	}
+	defer resp.Body.Close()
+	
+	// Check response status code
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Champion mastery API error (status %d): %s", resp.StatusCode, string(body))
+	}
+	
+	// Parse response
+	var masteries []ChampionMastery
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response: %v", err)
+	}
+	
+	if err := json.Unmarshal(body, &masteries); err != nil {
+		return nil, fmt.Errorf("error unmarshaling mastery response: %v", err)
+	}
+	
+	log.Printf("Retrieved %d champion masteries for summoner ID %s", len(masteries), summonerID)
+	
+	return masteries, nil
 }
 
 // getSummonerByName retrieves summoner data using the Riot API
