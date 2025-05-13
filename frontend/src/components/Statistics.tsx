@@ -15,8 +15,21 @@ const Statistics = () => {
   }, [stats, profile]);
 
   const handleAddStat = async (game: string, platform: string) => {
-    if (!profile?.steam_id) {
+    // Check for the required account based on platform
+    if (platform === "Steam" && !profile?.steam_id) {
       alert("You must link your Steam account before adding stats.");
+      return;
+    } else if (platform === "Riot" && !profile?.riot_id) {
+      alert("You must link your Riot account before adding stats.");
+      return;
+    } else if (platform === "EA" && !profile?.ea_username) {
+      alert("You must link your EA account before adding stats.");
+      return;
+    } else if (platform === "Xbox" && !profile?.xbox_id) {
+      alert("You must link your Xbox account before adding stats.");
+      return;
+    } else if (platform === "PlayStation" && !profile?.playstation_id) {
+      alert("You must link your PlayStation account before adding stats.");
       return;
     }
 
@@ -47,7 +60,10 @@ const Statistics = () => {
         {stats.map((stat, index) => (
           <StatCard 
             key={`${stat.game}-${stat.platform}-${index}`} 
-            stat={{...stat, onDelete: handleDeleteCard}} 
+            stat={{
+              ...stat, 
+              onDelete: stat.ID ? handleDeleteCard : undefined
+            }} 
           />
         ))}
         <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-16 h-16 flex items-center justify-center text-3xl"

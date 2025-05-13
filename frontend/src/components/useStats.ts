@@ -25,6 +25,9 @@ const useStats = () => {
   const [profile, setProfile] = useState<{ 
     steam_id?: string;
     ea_username?: string;
+    riot_id?: string;
+    xbox_id?: string;
+    playstation_id?: string;
   } | null>(null);
 
   // Convert backend stat format to frontend format
@@ -115,11 +118,74 @@ const useStats = () => {
               // Process tracker.gg API response
               if (response.data && response.data.data) {
                 return { ...stat, data: processApexStats(response.data.data) };
+              } else {
+                return { ...stat, data: { error: "No data available" } };
+              }
+            }
+            else if ((stat.game === "Valorant" || stat.game === "League of Legends") && profile.riot_id) {
+              console.log(`Fetching ${stat.game} stats for Riot ID: ${profile.riot_id}`);
+              
+              // Convert game name to endpoint
+              const gameEndpoint = stat.game === "League of Legends" ? "lol" : "valorant";
+              // Note: Backend uses 'lol' instead of 'league' for the League of Legends endpoint
+              
+              const response = await axios.get(
+                `${process.env.REACT_APP_API_URL}/api/stats/${gameEndpoint}`,
+                { params: { riot_id: profile.riot_id } }
+              );
+              console.log(`Stats for ${stat.game} fetched:`, response.data);
+              
+              // Process based on game type with enhanced logging
+              console.log(`Raw ${stat.game} API response:`, response);
+              
+              if (response.data) {
+                if (stat.game === "Valorant") {
+                  return { ...stat, data: processValorantStats(response.data) };
+                } else {
+                  // Enhanced logging for League data
+                  console.log("League response status:", response.status);
+                  console.log("League response headers:", response.headers);
+                  
+                  const processedData = processLeagueStats(response.data);
+                  console.log("Processed League data:", processedData);
+                  return { ...stat, data: processedData };
+                }
+              } else {
+                console.error(`No data in response for ${stat.game}`);
+                return { ...stat, data: { error: "No data available" } };
+              }
+            }
+            else if (stat.game === "Call of Duty") {
+              // Determine the account to use based on platform
+              let username;
+              let platform = stat.platform.toLowerCase();
+              
+              if (platform === "playstation" && profile.playstation_id) {
+                username = profile.playstation_id;
+              } else if (platform === "xbox" && profile.xbox_id) {
+                username = profile.xbox_id;
+              } else if (platform === "battle.net") {
+                username = profile.ea_username; // Temporarily use EA username for testing
               }
               
-              return { ...stat, data: null };
-            }
-            else {
+              if (!username) {
+                return { ...stat, data: { error: "No linked account for selected platform" } };
+              }
+              
+              console.log(`Fetching Call of Duty stats for username: ${username} on platform: ${platform}`);
+              const response = await axios.get(
+                `${process.env.REACT_APP_API_URL}/api/stats/cod`,
+                { params: { username, platform } }
+              );
+              console.log(`Stats for ${stat.game} fetched:`, response.data);
+              
+              // Process response
+              if (response.data) {
+                return { ...stat, data: processCoDStats(response.data) };
+              } else {
+                return { ...stat, data: { error: "No data available" } };
+              }
+            } else {
               console.warn(`⚠️ Cannot fetch stats for ${stat.game}: Missing required account info`);
               return { ...stat, data: null };
             }
@@ -191,18 +257,311 @@ const useStats = () => {
     return result;
   };
 
+  // Process Valorant stats from the backend API
+  const processValorantStats = (data: any) => {
+    console.log("Processing Valorant stats from raw data:", data);
+    
+    // Enhanced error checking and debugging
+    if (!data) {
+      console.error("Valorant data is null or undefined");
+      return { error: "No Valorant data received" };
+    }
+    
+    if (Object.keys(data).length === 0) {
+      console.error("Valorant data is an empty object");
+      return { error: "Empty Valorant data received" };
+    }
+    
+    // Log extra debug information to help troubleshoot API response issues
+    console.log("Raw Valorant API response keys:", Object.keys(data));
+    console.log("Raw account data:", data.account);
+    
+    // Create a new simplified structure with all stats combined to make display easier
+    const result: any = {};
+    
+    // Add account data
+    if (data.account) {
+      result.account = {
+        name: data.account.gameName || "Unknown Player",
+        tagLine: data.account.tagLine || "#NA",
+        puuid: data.account.puuid || ""
+      };
+      
+      console.log("Extracted account data:", result.account);
+    } else {
+      result.account = { name: "Unknown Player", tagLine: "#NA" };
+    }
+    
+    // Copy profile data if available
+    if (data.profile) {
+      result.profile = {
+        accountLevel: data.profile.accountLevel || 0,
+        rank: data.profile.rank || "Unranked",
+        rankTier: data.profile.rankTier || 0
+      };
+    } else {
+      result.profile = { accountLevel: 0, rank: "Unranked", rankTier: 0 };
+    }
+    
+    // Process match statistics
+    if (data.matches) {
+      result.matchStats = {
+        winRate: data.matches.winRate || 0,
+        kdRatio: data.matches.kdRatio || 0,
+        totalMatches: data.matches.totalGames || 0,
+        wins: data.matches.wins || 0,
+        losses: data.matches.losses || 0,
+        averageKills: data.matches.averageKills || 0,
+        averageDeaths: data.matches.averageDeaths || 0,
+        averageAssists: data.matches.averageAssists || 0,
+        averageCombatScore: data.matches.averageCombatScore || 0
+      };
+    } else {
+      result.matchStats = {
+        winRate: 0,
+        kdRatio: 0,
+        totalMatches: 0,
+        wins: 0,
+        losses: 0
+      };
+    }
+    
+    // Process agent stats
+    if (data.matches && data.matches.topAgents && data.matches.topAgents.length > 0) {
+      result.agentStats = data.matches.topAgents.map((agent: any) => ({
+        agentName: agent.agentName,
+        matches: agent.matches,
+        wins: agent.wins,
+        winRate: agent.winRate,
+        kda: agent.kda
+      }));
+    } else {
+      result.agentStats = [];
+    }
+    
+    // Process recent matches
+    if (data.matches && data.matches.recentMatches && data.matches.recentMatches.length > 0) {
+      result.recentMatches = data.matches.recentMatches.map((match: any) => ({
+        matchId: match.matchId,
+        agent: match.agent,
+        gameMode: match.gameMode,
+        mapId: match.mapId,
+        kills: match.kills,
+        deaths: match.deaths,
+        assists: match.assists,
+        kda: match.kda,
+        combatScore: match.combatScore,
+        won: match.won,
+        gameLength: match.gameLength,
+        timestamp: new Date(match.gameStartTime * 1000)
+      }));
+    } else {
+      result.recentMatches = [];
+    }
+    
+    console.log("Processed Valorant data:", result);
+    return result;
+  };
+
+  // Process League of Legends stats
+  const processLeagueStats = (data: any) => {
+    console.log("Processing League of Legends stats from raw data:", data);
+    
+    // Enhanced error checking and debugging
+    if (!data) {
+      console.error("League data is null or undefined");
+      return { error: "No League of Legends data received" };
+    }
+    
+    if (Object.keys(data).length === 0) {
+      console.error("League data is an empty object");
+      return { error: "Empty League of Legends data received" };
+    }
+    
+    // Log extra debug information to help troubleshoot API response issues
+    console.log("Raw League API response keys:", Object.keys(data));
+    console.log("Raw summoner data:", data.summoner);
+    
+    // Create a new simplified structure with all stats combined to make display easier
+    const result: any = {};
+    
+    // Add summoner data with better handling of different response formats
+    if (data.summoner) {
+      // Create a clean summoner object with all required fields
+      result.summoner = {
+        // Extract name from various possible locations in response
+        name: data.summoner.name || data.summoner.gameName || data.name || data.gameName || "Unknown Summoner",
+        summonerLevel: data.summoner.summonerLevel || data.summonerLevel || 0,
+        profileIconId: data.summoner.profileIconId || data.profileIconId || 1, // Default icon if missing
+        lastPlayTime: data.summoner.revisionDate || data.revisionDate || new Date().toISOString()
+      };
+      
+      // Log summoner info for debugging
+      console.log("Extracted summoner data:", result.summoner);
+    } else {
+      // Create a default summoner object if missing entirely
+      result.summoner = { name: "Unknown Summoner", summonerLevel: 0, profileIconId: 1 };
+    }
+    
+    // Copy ranked data if available
+    if (data.ranked && data.ranked.length > 0) {
+      result.ranked = data.ranked;
+    } else {
+      result.ranked = []; // Empty array if no ranked data
+    }
+    
+    // Combine match stats from all sources
+    let matchStats: any = {};
+    
+    // Import regular match stats if available
+    if (data.matches) {
+      matchStats = { ...data.matches };
+    }
+    
+    // Import quick play stats if available and merge them with match stats
+    if (data.quickPlay) {
+      // If we have both quickPlay and match data, combine them
+      if (matchStats.totalGames) {
+        // Calculate weighted averages for combined stats
+        const totalGames = (matchStats.totalGames || 0) + (data.quickPlay.totalGames || 0);
+        const totalWins = (matchStats.wins || 0) + (data.quickPlay.wins || 0);
+        
+        // Combine stats with weighting by number of games
+        if (totalGames > 0) {
+          matchStats.totalGames = totalGames;
+          matchStats.wins = totalWins;
+          matchStats.losses = totalGames - totalWins;
+          
+          // Weight the averages by number of games in each category
+          const getWeightedAvg = (matchStat: string) => {
+            const matchValue = matchStats[matchStat] || 0;
+            const quickValue = data.quickPlay[matchStat] || 0;
+            const matchWeight = matchStats.totalGames / totalGames;
+            const quickWeight = data.quickPlay.totalGames / totalGames;
+            return (matchValue * matchWeight) + (quickValue * quickWeight);
+          };
+          
+          // Calculate weighted averages for key stats
+          matchStats.averageKills = getWeightedAvg('averageKills');
+          matchStats.averageDeaths = getWeightedAvg('averageDeaths');
+          matchStats.averageAssists = getWeightedAvg('averageAssists');
+        }
+      } else {
+        // If we only have quickPlay stats, just use those
+        matchStats = { ...data.quickPlay };
+      }
+    }
+    
+    // Calculate additional stats from our combined data
+    if (matchStats) {
+      // Calculate KDA if we have the raw components
+      if (!matchStats.kda && matchStats.averageDeaths !== undefined) {
+        const deaths = matchStats.averageDeaths || 1; // Avoid division by zero
+        const kills = matchStats.averageKills || 0;
+        const assists = matchStats.averageAssists || 0;
+        matchStats.kda = Number(((kills + assists) / Math.max(1, deaths)).toFixed(2));
+      }
+      
+      // Calculate win rate from total games and wins
+      if (matchStats.totalGames && matchStats.wins !== undefined) {
+        matchStats.winRate = Number((matchStats.wins / matchStats.totalGames * 100).toFixed(1));
+      }
+    }
+    
+    // Add processed match stats to the result
+    result.matches = matchStats;
+    
+    // Add champion stats if available
+    if (data.champions && data.champions.length > 0) {
+      result.champions = data.champions;
+    }
+    
+    // Log the final processed structure
+    console.log("Final processed League data:", result);
+    
+    return result;
+  };
+  
+  // Process Call of Duty stats
+  const processCoDStats = (data: any) => {
+    const result: any = {};
+    
+    console.log("Processing Call of Duty stats from data:", data);
+    
+    // Process lifetime stats
+    if (data.lifetime) {
+      result.level = data.lifetime.level;
+      result.prestige = data.lifetime.prestige;
+      result.time_played = data.lifetime.time_played;
+      result.games_played = data.lifetime.games_played;
+      result.wins = data.lifetime.wins;
+      result.losses = data.lifetime.losses;
+      result.win_rate = data.lifetime.win_percentage;
+      result.kills = data.lifetime.kills;
+      result.deaths = data.lifetime.deaths;
+      result.kd_ratio = data.lifetime.kd_ratio;
+      result.accuracy = data.lifetime.accuracy;
+      result.headshots = data.lifetime.headshots;
+    }
+    
+    // Process weapon stats
+    if (data.weapons && data.weapons.length > 0) {
+      result.weapons = data.weapons.map((weapon: any) => ({
+        name: weapon.name,
+        kills: weapon.kills,
+        accuracy: weapon.accuracy,
+        headshots: weapon.headshots
+      }));
+    }
+    
+    // Process map stats
+    if (data.maps && data.maps.length > 0) {
+      result.maps = data.maps.map((map: any) => ({
+        name: map.name,
+        wins: map.wins,
+        losses: map.losses,
+        win_rate: map.win_percentage
+      }));
+    }
+    
+    return result;
+  };
+
   const saveStatSelection = async (game: string, platform: string) => {
     if (!profile) {
       throw new Error("❌ Profile must be loaded before saving stats.");
     }
     
-    // Check if required accounts are linked
+    // Check if required accounts are linked based on game and platform
     if (game === "CS2" && !profile.steam_id) {
       throw new Error("❌ Steam account must be linked before saving CS2 stats.");
     }
     
-    if (game === "Apex Legends" && !profile.ea_username) {
-      throw new Error("❌ EA account must be linked before saving Apex Legends stats.");
+    if (game === "Apex Legends") {
+      const platformLower = platform.toLowerCase();
+      if (platformLower === "ea" && !profile.ea_username) {
+        throw new Error("❌ EA account must be linked before saving Apex Legends stats.");
+      }
+      if (platformLower === "playstation" && !profile.playstation_id) {
+        throw new Error("❌ PlayStation account must be linked before saving Apex Legends stats.");
+      }
+      if (platformLower === "xbox" && !profile.xbox_id) {
+        throw new Error("❌ Xbox account must be linked before saving Apex Legends stats.");
+      }
+    }
+    
+    if ((game === "Valorant" || game === "League of Legends") && !profile.riot_id) {
+      throw new Error(`❌ Riot account must be linked before saving ${game} stats.`);
+    }
+    
+    if (game === "Call of Duty") {
+      const platformLower = platform.toLowerCase();
+      if (platformLower === "playstation" && !profile.playstation_id) {
+        throw new Error("❌ PlayStation account must be linked before saving Call of Duty stats.");
+      }
+      if (platformLower === "xbox" && !profile.xbox_id) {
+        throw new Error("❌ Xbox account must be linked before saving Call of Duty stats.");
+      }
     }
 
     try {

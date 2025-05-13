@@ -29,8 +29,19 @@ func Init() {
 // RequireAuth is middleware to protect routes with JWT
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Debug logging for troubleshooting
+		log.Printf("[DEBUG] Auth middleware triggered for path: %s", c.Request.URL.Path)
+
+		// Extract and log headers for debugging
+		log.Printf("[DEBUG] Authorization header: %s", c.GetHeader("Authorization"))
+		log.Printf("[DEBUG] Cookie header: %s", c.GetHeader("Cookie"))
+
 		tokenString := ExtractToken(c)
 		if tokenString == "" {
+			log.Printf("[DEBUG] No token found for request to: %s", c.Request.URL.Path)
+			// Add CORS headers before aborting
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			c.Abort()
 			return
@@ -42,6 +53,10 @@ func RequireAuth() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
+			log.Printf("[DEBUG] Invalid token: %v", err)
+			// Add CORS headers before aborting
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			c.Abort()
 			return
@@ -49,6 +64,10 @@ func RequireAuth() gin.HandlerFunc {
 
 		userID, ok := claims["sub"].(float64)
 		if !ok {
+			log.Printf("[DEBUG] Invalid token payload - sub claim missing or not a number")
+			// Add CORS headers before aborting
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token payload"})
 			c.Abort()
 			return

@@ -6,6 +6,7 @@ import Login from "./components/login";
 import Profile from "./components/profile";
 import Navbar from "./components/navbar";
 import Statistics from "./components/Statistics";
+import FriendsList from "./components/FriendsList";
 
 const PrivateRoute = ({ element }: { element: React.JSX.Element }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -67,6 +68,7 @@ function App() {
           <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} />} /> {/* Pass `setIsLoggedIn` */}
           <Route path="/profile" element={<PrivateRoute element={<Profile />} />} />
           <Route path="/statistics" element={<PrivateRoute element={<Statistics />} />} />
+          <Route path="/friends" element={<PrivateRoute element={<FriendsList />} />} />
         </Routes>
       </div>
     </Router>

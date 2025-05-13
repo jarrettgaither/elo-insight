@@ -12,6 +12,7 @@ const Navbar = ({ isLoggedIn, handleLogout }: { isLoggedIn: boolean | null, hand
           <>
             <Link to="/profile" className="text-gray-300 hover:text-white mx-2">Profile</Link>
             <Link to="/statistics" className="text-gray-300 hover:text-white mx-2">Statistics</Link>
+            <Link to="/friends" className="text-gray-300 hover:text-white mx-2">Friends</Link>
             <Button onClick={handleLogout} className="bg-red-500 hover:bg-red-700 ml-4">
               Logout
             </Button>

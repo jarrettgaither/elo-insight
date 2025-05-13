@@ -1,19 +1,63 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 
-const availableGames = ["CS2", "Apex Legends", "Valorant"]; // Extendable
+// Full list of available games
+const availableGames = ["CS2", "Apex Legends", "Valorant", "League of Legends", "Call of Duty"]; 
+
+// Game to platform mapping
+const gamePlatforms: Record<string, string[]> = {
+  "CS2": ["Steam"],
+  "Apex Legends": ["EA", "PlayStation", "Xbox"],
+  "Valorant": ["Riot"],
+  "League of Legends": ["Riot"],
+  "Call of Duty": ["PlayStation", "Xbox", "Battle.net"]
+};
 
 const AddStatModal = ({
   profile,
   onClose,
   onAddStat,
 }: {
-  profile: { steam_id?: string } | null;
+  profile: { 
+    steam_id?: string;
+    ea_username?: string;
+    riot_id?: string;
+    xbox_id?: string;
+    playstation_id?: string; 
+  } | null;
   onClose: () => void;
   onAddStat: (game: string, platform: string) => void;
 }) => {
-  const [selectedPlatform, setSelectedPlatform] = useState("");
   const [selectedGame, setSelectedGame] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState("");
+  const [availablePlatforms, setAvailablePlatforms] = useState<string[]>([]);
+
+  // Update available platforms when game selection changes
+  const handleGameChange = (game: string) => {
+    setSelectedGame(game);
+    setSelectedPlatform(""); // Reset platform selection
+    
+    if (!game) {
+      setAvailablePlatforms([]);
+      return;
+    }
+    
+    // Get platforms for the selected game
+    const platforms = gamePlatforms[game] || [];
+    
+    // Filter platforms based on linked accounts
+    const linkedPlatforms = platforms.filter(platform => {
+      if (platform === "Steam" && profile?.steam_id) return true;
+      if (platform === "EA" && profile?.ea_username) return true;
+      if (platform === "Riot" && profile?.riot_id) return true;
+      if (platform === "Xbox" && profile?.xbox_id) return true;
+      if (platform === "PlayStation" && profile?.playstation_id) return true;
+      if (platform === "Battle.net") return true; // No linking required for now
+      return false;
+    });
+    
+    setAvailablePlatforms(linkedPlatforms);
+  };
 
   const handleAdd = () => {
     if (!selectedPlatform || !selectedGame) {
@@ -29,20 +73,10 @@ const AddStatModal = ({
       <div className="bg-gray-800 text-white p-6 rounded-lg w-96">
         <h3 className="text-xl font-bold mb-4">Add Game Stats</h3>
 
-        <label className="block mb-2">Select Platform:</label>
-        <select
-          value={selectedPlatform}
-          onChange={(e) => setSelectedPlatform(e.target.value)}
-          className="w-full p-2 bg-gray-700 text-white rounded mb-4"
-        >
-          <option value="">-- Select Platform --</option>
-          {profile?.steam_id && <option value="Steam">Steam</option>}
-        </select>
-
         <label className="block mb-2">Select Game:</label>
         <select
           value={selectedGame}
-          onChange={(e) => setSelectedGame(e.target.value)}
+          onChange={(e) => handleGameChange(e.target.value)}
           className="w-full p-2 bg-gray-700 text-white rounded mb-4"
         >
           <option value="">-- Select Game --</option>
@@ -52,6 +86,28 @@ const AddStatModal = ({
             </option>
           ))}
         </select>
+
+        <label className="block mb-2">Select Platform:</label>
+        <select
+          value={selectedPlatform}
+          onChange={(e) => setSelectedPlatform(e.target.value)}
+          className="w-full p-2 bg-gray-700 text-white rounded mb-4"
+          disabled={availablePlatforms.length === 0}
+        >
+          <option value="">-- Select Platform --</option>
+          {availablePlatforms.map((platform) => (
+            <option key={platform} value={platform}>
+              {platform}
+            </option>
+          ))}
+        </select>
+        
+        {selectedGame && availablePlatforms.length === 0 && (
+          <div className="text-amber-500 mb-4 text-sm">
+            You need to link your gaming account before adding {selectedGame} stats. 
+            Visit your profile to link the required accounts.
+          </div>
+        )}
 
         <div className="flex justify-end">
           <Button onClick={onClose} className="mr-2 bg-gray-600 hover:bg-gray-700">
